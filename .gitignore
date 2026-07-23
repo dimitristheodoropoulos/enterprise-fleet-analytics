@@ -1,4 +1,33 @@
+# Python Virtual Environments
 venv/
+ENV/
+env/
+
+# Python Cache & Compiled Files
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+
+# Environment Variables & Secrets
 .env
+*.env
+
+# Excel Temporary & Lock Files
+~$*.xlsx
+~$*.xls
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db

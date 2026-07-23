@@ -33,17 +33,21 @@ The solution utilizes a highly optimized relational Star Schema:
 
    Configure Environment Variables:
 The application securely fetches the Gemini API credentials using environment variables. Set your key in your terminal before running the application:
+
 # On Windows (PowerShell)
 $env:GEMINI_API_KEY="your_actual_api_key_here"
 
 Populate the Database:
 Ensure your PostgreSQL docker container is up and running, then execute the data pipeline script to seed the database with 100,000 production-scale telemetry records:
+
 python database/generate_data.py
 
 Start the FastAPI Backend Server:
+
 uvicorn main:app --reload
 
 Execute the AI Chatbot Agent:
+
 python chatbot_agent.py
 
 📈 Power BI Insights
