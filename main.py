@@ -6,6 +6,8 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from openai import OpenAI
 from pydantic import BaseModel, ValidationError  # Προσθήκη για Type Validation
+import joblib
+import numpy as np
 
 app = FastAPI(title="Global Maritime Analytics API")  # <-- Ενημερώθηκε σε generic title
 
@@ -15,6 +17,14 @@ client = OpenAI(
     api_key=api_key_env, 
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
+
+# --- LOAD PREDICTIVE ML MODEL ---
+MODEL_PATH = "models/fuel_model.pkl"
+try:
+    fuel_model = joblib.load(MODEL_PATH)
+except Exception as e:
+    fuel_model = None
+    print(f"Warning: Fuel prediction model not found at {MODEL_PATH}. Train it first. Error: {e}")
 
 def get_db_connection():
     conn = psycopg2.connect(
@@ -30,6 +40,14 @@ def get_db_connection():
 # --- INPUT GUARDRAIL MODEL ---
 class VesselAnalyticsArgs(BaseModel):
     vessel_id: int
+
+# --- ML PREDICTION INPUT MODEL ---
+class FuelPredictionRequest(BaseModel):
+    speed: float
+    cargo_weight: float
+    beaufort_scale: int
+    dwt: float
+    built_year: int
 
 @app.get("/")
 def home():
@@ -85,6 +103,31 @@ def fetch_vessel_analytics_internal(vessel_id: int):
     cur.close()
     conn.close()
     return data
+
+# --- NEW PREDICTIVE ML ENDPOINT ---
+@app.post("/predict-fuel-consumption")
+def predict_fuel_consumption(data: FuelPredictionRequest):
+    if fuel_model is None:
+        raise HTTPException(
+            status_code=503, 
+            detail="Fuel prediction model is not trained or loaded. Please run train_model.py first."
+        )
+    try:
+        input_data = np.array([[
+            data.speed, 
+            data.cargo_weight, 
+            data.beaufort_scale, 
+            data.dwt, 
+            data.built_year
+        ]])
+        prediction = fuel_model.predict(input_data)[0]
+        return {
+            "predicted_fuel_consumption_tons_per_day": round(float(prediction), 2),
+            "unit": "Metric Tons / Day",
+            "status": "success"
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
 @app.post("/ask")
 def ask_copilot(user_question: dict):

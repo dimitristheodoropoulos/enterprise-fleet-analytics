@@ -31,3 +31,6 @@ build/
 ._*
 Thumbs.db
 ehthumbs.db
+
+# Large trained models (regenerate locally via models/run_training.py)
+models/fuel_model.pkl
