@@ -1,6 +1,12 @@
-# Enterprise Fleet Analytics & AI Copilot 🚢🤖
+# AI-Driven Operational Analytics Platform 🤖📊
+### (Enterprise Fleet Analytics & Finance Reconciliation)
 
-An enterprise-grade maritime analytics platform and AI assistant that processes multi-million row fleet telemetry data, generates operational insights using a **Text-to-SQL AI Agent**, exposes data via a **FastAPI REST API**, applies a full **Machine Learning suite** (prediction, clustering, classification, optimization, forecasting) to fuel consumption, and visualizes key performance indicators (KPIs) through an interactive **Power BI Dashboard**.
+An enterprise-grade AI-driven analytics and automation platform, built around a reusable architecture — Text-to-SQL AI agent, FastAPI REST API, PostgreSQL, and an LLM explanation layer — applied to **two independent operational domains** to demonstrate the platform's generality:
+
+* 🚢 **Maritime Fleet Analytics:** Processes multi-million row fleet telemetry data, generates operational insights using a Text-to-SQL AI Agent, applies a full Machine Learning suite (prediction, clustering, classification, optimization, forecasting) to fuel consumption, and visualizes KPIs through an interactive Power BI Dashboard.
+* 💰 **Finance Reconciliation:** Automates cross-system transaction matching (ERP vs. bank/PMS), anomaly/exception detection, human-in-the-loop exception review, and automated journal entry generation. See [`finance/README.md`](finance/README.md) for full details.
+
+The sections below cover the original maritime analytics build in depth; jump to [💰 Finance Reconciliation Extension](finance/README.md) for the finance-domain module.
 
 ## 🌟 Key Features
 * **AI Copilot (Text-to-SQL):** Converts natural language queries into safe, production-ready PostgreSQL syntax using the official Google GenAI SDK (`gemini-2.5-flash`).
@@ -101,4 +107,4 @@ Open the `Enterprise_Fleet_Analytics.pbix` file in Power BI Desktop and hit Refr
 
 ## 💰 Finance Reconciliation Extension
 
-The same AI-driven platform generalizes beyond maritime telemetry: the [`finance/`](finance/README.md) module reuses the exact same architecture (PostgreSQL, FastAPI, LLM explanation layer) to solve a cross-system finance-operations problem — automated reconciliation, exception handling with human-in-the-loop validation, and journal entry generation. See [`finance/README.md`](finance/README.md) for full details, endpoints, and a verified end-to-end run.
+See [`finance/README.md`](finance/README.md) for full details, endpoints, and a verified end-to-end run.

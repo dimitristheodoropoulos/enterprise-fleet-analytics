@@ -1,6 +1,6 @@
 # Finance Reconciliation Extension 💰🤖
 
-An extension of the **Enterprise Fleet Analytics** platform that reuses the exact same architecture (PostgreSQL, FastAPI, LLM explanation layer) to solve a cross-system finance-operations problem: automated reconciliation, exception handling with human-in-the-loop validation, and journal entry generation.
+Part of the [AI-Driven Operational Analytics Platform](../README.md) — this module applies the same architecture (PostgreSQL, FastAPI, LLM explanation layer) built for maritime fleet analytics to a finance-operations use case: automated reconciliation, exception handling with human-in-the-loop validation, and journal entry generation.
 
 ## What it does
 * **Cross-system matching:** Reconciles transactions between two independent feeds (e.g. an internal ERP ledger vs. a bank/PMS statement) by reference, flagging amount mismatches, date mismatches, and unmatched entries on either side.
