@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+psycopg2-binary
+pydantic
+openai
+google-genai
+pandas
+numpy
+scikit-learn
+statsmodels
+matplotlib
+joblib
