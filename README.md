@@ -98,3 +98,49 @@ python models/forecast_fuel_trend.py   # forecasting
 Open the `Enterprise_Fleet_Analytics.pbix` file in Power BI Desktop and hit Refresh to explore live aggregated data pipelines:
 * Fuel efficiency degradation maps against high Beaufort weather states.
 * Fuel consumption trends by hull type and asset age profile.
+
+## 💰 Finance Reconciliation Extension
+
+The same AI-driven platform generalizes beyond maritime telemetry: the `finance/` module reuses the exact same architecture (PostgreSQL, FastAPI, LLM explanation layer) to solve a cross-system finance-operations problem — automated reconciliation, exception handling, and journal entry generation.
+
+### What it does
+* **Cross-system matching:** Reconciles transactions between two independent feeds (e.g. an internal ERP ledger vs. a bank/PMS statement) by reference, flagging amount mismatches, date mismatches, and unmatched entries on either side.
+* **Anomaly / exception detection:** Every discrepancy the matching engine can't cleanly resolve is recorded as a `PENDING_REVIEW` exception rather than silently ignored or auto-approved.
+* **Human-in-the-loop validation:** A reviewer approves or rejects each exception via a dedicated endpoint; the decision and reviewer are recorded for audit purposes.
+* **AI-generated explanations:** Each exception can be explained in natural language (via the same Gemini client used by the AI Copilot) to speed up human review.
+* **Automated journal entry generation:** Approving an exception automatically drafts a journal entry (debit/credit/amount/memo), ready for posting.
+
+### New tables
+* `erp_transactions` / `bank_transactions` — the two systems being reconciled.
+* `reconciliation_exceptions` — every mismatch found, its type, status, and AI explanation.
+* `journal_entries` — draft entries generated from approved exceptions.
+
+### Running it
+```bash
+# 1. Apply the finance schema (in addition to the main schema)
+psql -U postgres -d maritime_db -f finance/schema_finance.sql
+
+# 2. Seed mock ERP + bank transactions with intentional discrepancies
+python finance/generate_finance_data.py
+
+# 3. Start the API (finance router is mounted automatically in main.py)
+python -m uvicorn main:app --reload
+```
+
+### API endpoints
+| Method | Endpoint | Purpose |
+|---|---|---|
+| POST | `/finance/reconcile` | Runs a full reconciliation pass, returns a summary |
+| GET | `/finance/exceptions?status=PENDING_REVIEW` | Lists exceptions by status |
+| GET | `/finance/exceptions/{id}/explain` | AI-generated explanation for one exception |
+| POST | `/finance/exceptions/{id}/review` | Records an approve/reject decision (`{"decision": "APPROVED", "reviewed_by": "..."}`) |
+| GET | `/finance/journal-entries?status=DRAFT` | Lists generated journal entries |
+
+Example:
+```bash
+curl -X POST http://localhost:8000/finance/reconcile
+curl "http://localhost:8000/finance/exceptions?status=PENDING_REVIEW"
+curl -X POST http://localhost:8000/finance/exceptions/1/review \
+  -H "Content-Type: application/json" \
+  -d '{"decision": "APPROVED", "reviewed_by": "dimitris"}'
+```

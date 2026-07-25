@@ -9,7 +9,10 @@ from pydantic import BaseModel, ValidationError  # Προσθήκη για Type 
 import joblib
 import numpy as np
 
+from finance.api import router as finance_router
+
 app = FastAPI(title="Global Maritime Analytics API")  # <-- Ενημερώθηκε σε generic title
+app.include_router(finance_router)
 
 api_key_env = os.getenv("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 
