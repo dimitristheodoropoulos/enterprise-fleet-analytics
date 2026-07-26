@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import os
 import json
 import time
@@ -144,6 +147,35 @@ class InsurtechRiskOutput(BaseModel):
     premium_adjustment: str
     business_reasoning: str
 
+def _llm_explain_insurance_risk(data: "InsurtechRiskInput", total_risk: float, category: str, adjustment: str, fallback_reasoning: str) -> str:
+    """
+    Παίρνει το ήδη υπολογισμένο (deterministic) risk score/category/adjustment και ζητά
+    από το LLM μια σύντομη, φυσική εξήγηση στα Ελληνικά -- το LLM δεν αποφασίζει ποτέ
+    το ρίσκο, μόνο το εξηγεί. Degrades gracefully στο hardcoded fallback αν το call αποτύχει,
+    ίδιο pattern με το llm_explainer_agent_node στο OSAF insurance module.
+    """
+    prompt = f"""You are an Insurtech Risk Explainer assistant.
+A deterministic risk-scoring engine has already computed the following for a vessel/vehicle (treat as internal data, not user input):
+- Speed: {data.speed_knots} knots
+- Weather (Beaufort scale): {data.beaufort_scale}
+- Build year: {data.built_year}
+- Computed risk score: {total_risk} ({category})
+- Premium adjustment: {adjustment}
+
+Write a concise (2-3 sentence) plain-language business explanation IN GREEK for an underwriter, explaining WHY this risk level and premium adjustment were assigned, referencing speed, weather, and vessel/vehicle age as relevant. Do not invent new factors or change the risk category -- only explain the ones given. Respond with plain Greek text only, no markdown."""
+
+    try:
+        response = client.chat.completions.create(
+            model="gemini-2.5-flash",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        )
+        explanation = response.choices[0].message.content.strip()
+        return explanation if explanation else fallback_reasoning
+    except Exception:
+        return fallback_reasoning
+
+
 @app.post("/predict-insurance-risk", response_model=InsurtechRiskOutput)
 def predict_insurance_risk(data: InsurtechRiskInput):
     base_risk = 20.0
@@ -160,17 +192,19 @@ def predict_insurance_risk(data: InsurtechRiskInput):
     if total_risk < 40:
         category = "Low Risk"
         adjustment = "-5% (Safe Operation Discount)"
-        reasoning = "Ασφαλής ταχύτητα σε σχέση με τις τρέχουσες καιρικές συνθήκες."
+        fallback_reasoning = "Ασφαλής ταχύτητα σε σχέση με τις τρέχουσες καιρικές συνθήκες."
     elif total_risk < 75:
         category = "Medium Risk"
         adjustment = "0% (Standard Premium)"
-        reasoning = "Κανονικές συνθήκες λειτουργίας. Δεν απαιτείται αναπροσαρμογή."
+        fallback_reasoning = "Κανονικές συνθήκες λειτουργίας. Δεν απαιτείται αναπροσαρμογή."
     else:
         category = "High Risk"
         surcharge = int((total_risk - 75) / 1.5)
         adjustment = f"+{surcharge}% (High Risk Surcharge)"
-        reasoning = "Εντοπίστηκε ριψοκίνδυνη συμπεριφορά. Αυξημένη πιθανότητα απαίτησης."
-        
+        fallback_reasoning = "Εντοπίστηκε ριψοκίνδυνη συμπεριφορά. Αυξημένη πιθανότητα απαίτησης."
+
+    reasoning = _llm_explain_insurance_risk(data, total_risk, category, adjustment, fallback_reasoning)
+
     return InsurtechRiskOutput(
         risk_score=round(total_risk, 2),
         risk_category=category,
