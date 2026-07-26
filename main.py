@@ -132,6 +132,52 @@ def predict_fuel_consumption(data: FuelPredictionRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction error: {str(e)}")
 
+# --- INSURTECH RISK & UBI ML ENDPOINT ---
+class InsurtechRiskInput(BaseModel):
+    speed_knots: float
+    beaufort_scale: int
+    built_year: int
+
+class InsurtechRiskOutput(BaseModel):
+    risk_score: float
+    risk_category: str
+    premium_adjustment: str
+    business_reasoning: str
+
+@app.post("/predict-insurance-risk", response_model=InsurtechRiskOutput)
+def predict_insurance_risk(data: InsurtechRiskInput):
+    base_risk = 20.0
+    
+    weather_speed_penalty = 0.0
+    if data.beaufort_scale >= 6 and data.speed_knots > 12.0:
+        weather_speed_penalty = (data.beaufort_scale - 5) * (data.speed_knots - 10) * 2.5
+        
+    current_year = 2026
+    age_penalty = (current_year - data.built_year) * 0.8
+    
+    total_risk = min(base_risk + weather_speed_penalty + age_penalty, 100.0)
+    
+    if total_risk < 40:
+        category = "Low Risk"
+        adjustment = "-5% (Safe Operation Discount)"
+        reasoning = "Ασφαλής ταχύτητα σε σχέση με τις τρέχουσες καιρικές συνθήκες."
+    elif total_risk < 75:
+        category = "Medium Risk"
+        adjustment = "0% (Standard Premium)"
+        reasoning = "Κανονικές συνθήκες λειτουργίας. Δεν απαιτείται αναπροσαρμογή."
+    else:
+        category = "High Risk"
+        surcharge = int((total_risk - 75) / 1.5)
+        adjustment = f"+{surcharge}% (High Risk Surcharge)"
+        reasoning = "Εντοπίστηκε ριψοκίνδυνη συμπεριφορά. Αυξημένη πιθανότητα απαίτησης."
+        
+    return InsurtechRiskOutput(
+        risk_score=round(total_risk, 2),
+        risk_category=category,
+        premium_adjustment=adjustment,
+        business_reasoning=reasoning
+    )
+
 @app.post("/ask")
 def ask_copilot(user_question: dict):
     start_time = time.time()
