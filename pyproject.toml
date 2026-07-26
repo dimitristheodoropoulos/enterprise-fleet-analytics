@@ -1,0 +1,13 @@
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+ignore = [
+    "BLE001",  # blind `except Exception` -- intentional graceful-degradation pattern used throughout this repo (LLM calls, DB connections)
+    "DTZ001",  # datetime() without tzinfo -- synthetic data generators use naive local dates by design
+    "DTZ003",  # datetime.utcnow() -- acceptable for internal timestamps in this project's scope
+    "DTZ005",  # datetime.now() without tz -- same as above
+    "RUF010",  # f-string !s conversion flag -- stylistic preference, not a bug
+    "PLR1722", # exit() vs sys.exit() -- used only in standalone data-generation scripts, not library code
+    "E402",    # module-level imports after load_dotenv() -- intentional: .env must load before modules read env vars at import time
+]

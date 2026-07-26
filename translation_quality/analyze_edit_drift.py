@@ -11,7 +11,6 @@ Outputs: printed findings + two charts (edit_distance_by_pair.png,
 v2_rollout_impact.png)
 """
 
-import numpy as np
 import pandas as pd
 import matplotlib
 matplotlib.use("Agg")

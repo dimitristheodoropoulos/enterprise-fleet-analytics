@@ -4,7 +4,6 @@ transactions by reference, flags amount/date discrepancies, and records
 anything it cannot auto-resolve as an exception pending human review.
 """
 import uuid
-from datetime import timedelta
 from decimal import Decimal
 
 import psycopg2

@@ -281,13 +281,13 @@ def ask_copilot(user_question: dict):
                     )
                     final_text_response = final_response.choices[0].message.content
                     
-                except (ValidationError, ValueError, json.JSONDecodeError) as e:
+                except (ValidationError, ValueError, json.JSONDecodeError):
                     tool_called_name = "BLOCKED_INVALID_ARGUMENT"
                     final_text_response = (
                         "Συγγνώμη, παρουσιάστηκε ένα σφάλμα κατά την επεξεργασία του αναγνωριστικού του πλοίου. "
                         "Παρακαλώ βεβαιωθείτε ότι ζητάτε έναν έγκυρο αριθμό πλοίου."
                     )
-                except Exception as e:
+                except Exception:
                     tool_called_name = "DATABASE_ERROR"
                     final_text_response = "Αυτή τη στιγμή παρουσιάστηκε τεχνικό πρόβλημα κατά την άντληση των δεδομένων."
 
