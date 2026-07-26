@@ -12,7 +12,6 @@ if sys.platform.startswith('win'):
     sys.stderr.reconfigure(encoding='utf-8')
 
 # 1. Αρχικοποίηση του Gemini Client με το νέο επίσημο SDK
-import os
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "YOUR_FALLBACK_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 

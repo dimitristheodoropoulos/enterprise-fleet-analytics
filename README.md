@@ -1,12 +1,13 @@
 # AI-Driven Operational Analytics Platform 🤖📊
-### (Enterprise Fleet Analytics & Finance Reconciliation)
+### (Enterprise Fleet Analytics, Finance Reconciliation & Translation Quality)
 
-An enterprise-grade AI-driven analytics and automation platform, built around a reusable architecture — Text-to-SQL AI agent, FastAPI REST API, PostgreSQL, and an LLM explanation layer — applied to **two independent operational domains** to demonstrate the platform's generality:
+An enterprise-grade AI-driven analytics and automation platform, built around a reusable architecture — Text-to-SQL AI agent, FastAPI REST API, PostgreSQL, and an LLM explanation layer — applied to **three independent operational domains** to demonstrate the platform's generality:
 
 * 🚢 **Maritime Fleet Analytics:** Processes multi-million row fleet telemetry data, generates operational insights using a Text-to-SQL AI Agent, applies a full Machine Learning suite (prediction, clustering, classification, optimization, forecasting) to fuel consumption, and visualizes KPIs through an interactive Power BI Dashboard.
 * 💰 **Finance Reconciliation:** Automates cross-system transaction matching (ERP vs. bank/PMS), anomaly/exception detection, human-in-the-loop exception review, and automated journal entry generation. See [`finance/README.md`](finance/README.md) for full details.
+* 🌐 **Translation Quality Analytics:** Investigates LLM translation-quality drift across language pairs and model versions using hypothesis-driven root-cause analysis (content-type mix, sentence length, and model-rollout effects), separating genuine signal from confounds rather than reporting raw metrics. See [`translation_quality/README.md`](translation_quality/README.md) for full details.
 
-The sections below cover the original maritime analytics build in depth; jump to [💰 Finance Reconciliation Extension](finance/README.md) for the finance-domain module.
+The sections below cover the original maritime analytics build in depth; jump to [💰 Finance Reconciliation Extension](finance/README.md) or [🌐 Translation Quality Analytics](translation_quality/README.md) for the other domain modules.
 
 ## 🌟 Key Features
 * **AI Copilot (Text-to-SQL):** Converts natural language queries into safe, production-ready PostgreSQL syntax using the official Google GenAI SDK (`gemini-2.5-flash`).
