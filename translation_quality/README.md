@@ -7,7 +7,11 @@ This branch exists specifically to demonstrate the kind of analysis described in
 ## The question
 
 > Why do users edit some language pairs' translations far more than others?
+### 🎮 Live Interactive Demo
 
+[**👉 Run the investigation live in your browser**](https://dimitristheodoropoulos.github.io/enterprise-fleet-analytics/)
+
+No setup required. Generate the synthetic dataset, step through Hypotheses A, B, and C, and see the statistical evidence (t-tests, residuals, p-values) appear in real-time. The demo runs the exact same logic as `analyze_edit_drift.py`, client-side.
 ## What this module does
 
 * **`generate_translation_data.py`** — builds a synthetic-but-realistic dataset of ~4,000 translation events over 90 days: language pair, content type, sentence length, model version (v1 → v2 rollout at day 45), user edit distance, latency, and quality score. The generator deliberately embeds a root cause (see below) rather than pure random noise, so the investigation script has something real to uncover.
