@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Case File: Translation Quality Drift</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#EAE7DE;
+    --paper-raised:#F4F2EB;
+    --ink:#1C2430;
+    --ink-soft:#5B6472;
+    --line: rgba(28,36,48,0.14);
+    --confirmed:#0F6E63;
+    --confirmed-bg:#E4EFEA;
+    --rejected:#A8412B;
+    --rejected-bg:#F3E4DD;
+    --partial:#B5822A;
+    --partial-bg:#F3EADA;
+    --accent:#1C2430;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:56px 24px 120px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:18px;
+  }
+  .eyebrow::before{content:"";width:20px;height:1px;background:var(--ink-soft);display:inline-block;}
+  h1{
+    font-family:'Fraunces',serif;
+    font-optical-sizing:auto;
+    font-weight:600;
+    font-size:clamp(30px,4.4vw,46px);
+    line-height:1.08;
+    margin:0 0 16px;
+    letter-spacing:-0.01em;
+  }
+  h1 em{font-style:italic;font-weight:500;color:var(--rejected);}
+  .lede{
+    font-size:17px;
+    line-height:1.6;
+    color:var(--ink-soft);
+    max-width:62ch;
+    margin:0 0 36px;
+  }
+  .honesty{
+    border:1px solid var(--partial);
+    background:var(--partial-bg);
+    padding:16px 18px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    line-height:1.6;
+    color:#5c4712;
+    margin-bottom:44px;
+    position:relative;
+  }
+  .honesty b{color:#3d2f0c;}
+  .stamp-corner{
+    position:absolute;top:-11px;left:18px;
+    background:var(--partial);
+    color:var(--paper-raised);
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10px;
+    letter-spacing:0.1em;
+    padding:3px 9px;
+    transform:rotate(-2deg);
+  }
+  .controls{
+    display:flex;
+    gap:12px;
+    flex-wrap:wrap;
+    margin-bottom:8px;
+  }
+  button.act{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    letter-spacing:0.03em;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    padding:13px 20px;
+    cursor:pointer;
+    transition:transform .15s ease, background .15s ease;
+  }
+  button.act:hover:not(:disabled){background:#333f52;}
+  button.act:active:not(:disabled){transform:scale(0.98);}
+  button.act:disabled{background:#c8c4b8;color:#8b8778;cursor:not-allowed;}
+  .status{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    color:var(--ink-soft);
+    margin:14px 0 40px;
+    min-height:16px;
+  }
+  section.block{
+    border-top:1px solid var(--line);
+    padding-top:32px;
+    margin-top:32px;
+    opacity:0;
+    transform:translateY(8px);
+    transition:opacity .5s ease, transform .5s ease;
+  }
+  section.block.show{opacity:1;transform:translateY(0);}
+  .tag{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+    display:block;
+  }
+  h2{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:24px;
+    margin:0 0 8px;
+  }
+  .q{color:var(--ink-soft);font-size:14.5px;line-height:1.6;max-width:64ch;margin:0 0 20px;}
+  .chart{
+    display:flex;
+    align-items:flex-end;
+    gap:14px;
+    height:150px;
+    padding:0 4px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:8px;
+  }
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;}
+  .bar{
+    width:100%;
+    max-width:46px;
+    background:var(--ink);
+    transition:height 1s cubic-bezier(.2,.8,.2,1);
+    height:0;
+    position:relative;
+  }
+  .bar.hot{background:var(--rejected);}
+  .bar-val{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    margin-bottom:6px;
+    color:var(--ink-soft);
+  }
+  .bar-label{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:10.5px;
+    color:var(--ink-soft);
+    margin-top:8px;
+  }
+  .verdict{
+    display:inline-flex;
+    align-items:center;
+    gap:8px;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    padding:7px 13px;
+    margin-top:16px;
+    border:1.5px solid currentColor;
+    transform:rotate(-1.2deg);
+  }
+  .verdict.rejected{color:var(--rejected);background:var(--rejected-bg);}
+  .verdict.partial{color:var(--partial);background:var(--partial-bg);}
+  .verdict.confirmed{color:var(--confirmed);background:var(--confirmed-bg);}
+  .stat-line{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:14px;
+    line-height:1.7;
+  }
+  .stat-line b{color:var(--ink);}
+  .note{
+    font-size:13.5px;
+    line-height:1.65;
+    color:var(--ink-soft);
+    margin-top:14px;
+    max-width:64ch;
+  }
+  .final{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    padding:26px 24px;
+  }
+  .final .tag{color:var(--confirmed);}
+  .final h2{color:var(--ink);}
+  .guardrail{
+    margin-top:18px;
+    padding:14px 16px;
+    border-left:3px solid var(--rejected);
+    background:var(--rejected-bg);
+    font-size:13.5px;
+    line-height:1.65;
+    color:#5a2b1e;
+  }
+  .feature-box{
+    margin-top:18px;
+    padding:14px 16px;
+    border-left:3px solid var(--confirmed);
+    background:var(--confirmed-bg);
+    font-size:13.5px;
+    line-height:1.65;
+    color:#12463d;
+    font-family:'IBM Plex Mono',monospace;
+  }
+  details{
+    margin-top:52px;
+    border-top:1px solid var(--line);
+    padding-top:20px;
+  }
+  summary{
+    cursor:pointer;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+  }
+  .methodology{margin-top:18px;font-size:14.5px;line-height:1.75;color:var(--ink-soft);}
+  .methodology b{color:var(--ink);}
+  .methodology ol{padding-left:20px;}
+  .methodology li{margin-bottom:10px;}
+  @media (prefers-reduced-motion: reduce){
+    section.block, .bar{transition:none;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Case File №04 — Translation Quality</div>
+  <h1>Why do users edit some<br>language pairs <em>far</em> more than others?</h1>
+  <p class="lede">An interactive walkthrough of a hypothesis-driven investigation — the same process used to trace a translation-quality anomaly back to its actual cause, one ruled-out theory at a time.</p>
+
+  <div class="honesty">
+    <span class="stamp-corner">Read first</span>
+    <b>Synthetic data, real methodology.</b> Everything below runs on a generated dataset built to contain one deliberately embedded root cause. It is not a claim about any production system — it exists to demonstrate the investigative sequence: hypothesis, test, rule out, confirm.
+  </div>
+
+  <div class="controls">
+    <button class="act" id="genBtn">① Generate 90-Day Dataset</button>
+    <button class="act" id="runBtn" disabled>② Run Investigation</button>
+    <button class="act" id="resetBtn" style="background:transparent;color:var(--ink-soft);border:1px solid var(--line);" disabled>↺ Reset</button>
+  </div>
+  <div class="status" id="status">No dataset generated yet.</div>
+
+  <section class="block" id="sec-symptom">
+    <span class="tag">Step 1 — The Symptom</span>
+    <h2>Mean edit distance, by language pair</h2>
+    <p class="q">A reporting analyst stops here. This is where the actual investigation begins.</p>
+    <div class="chart" id="chart-symptom"></div>
+  </section>
+
+  <section class="block" id="sec-a">
+    <span class="tag">Step 2 — Hypothesis A</span>
+    <h2>Is it just the content mix?</h2>
+    <p class="q">Maybe the outlier pair simply gets assigned harder content types more often. Re-weight every pair to a common content-type distribution and recompute.</p>
+    <div class="stat-line" id="stat-a"></div>
+    <div class="verdict rejected" id="verdict-a" style="display:none;">Ruled out</div>
+  </section>
+
+  <section class="block" id="sec-b">
+    <span class="tag">Step 3 — Hypothesis B</span>
+    <h2>Is it sentence length?</h2>
+    <p class="q">Longer sentences are harder to translate. Check the correlation, then see if the outlier pair still stands out after controlling for it.</p>
+    <div class="stat-line" id="stat-b"></div>
+    <div class="verdict partial" id="verdict-b" style="display:none;">Real, but partial</div>
+  </section>
+
+  <section class="block" id="sec-c">
+    <span class="tag">Step 4 — Hypothesis C</span>
+    <h2>The model version rollout</h2>
+    <p class="q">A model upgrade happened partway through the window. Compare edit distance before and after, per language pair.</p>
+    <div class="chart" id="chart-c"></div>
+    <div class="stat-line" id="stat-c"></div>
+    <div class="verdict confirmed" id="verdict-c" style="display:none;">Confirmed</div>
+  </section>
+
+  <section class="block final" id="sec-final">
+    <span class="tag">Step 5 — Recommendation</span>
+    <h2 id="final-headline"></h2>
+    <p class="note" id="final-note"></p>
+    <div class="guardrail">
+      <b>Before allocating engineering time:</b> edit distance is a proxy, not ground truth — a user may edit for style, not error. Next step is a native-speaker linguist review of a random sample, not an immediate fine-tuning sprint.
+    </div>
+    <div class="feature-box">
+      Since I don't speak the affected language, my own next move would be to use an LLM to translate 50 random edits back to English, scan for patterns, then hand the shortlist to a native-speaker linguist — combining AI tooling with human judgment rather than trusting either alone.
+    </div>
+  </section>
+
+  <details>
+    <summary>Read the methodology in plain language</summary>
+    <div class="methodology">
+      <ol>
+        <li><b>Surface the pattern.</b> Look at the raw averages — nothing more than "X is higher than Y."</li>
+        <li><b>Test the easy explanation first.</b> Re-weight the data so the comparison is fair, then see if the gap survives. Here it didn't move — content mix wasn't the story.</li>
+        <li><b>Test the next plausible cause.</b> Sentence length had a real correlation, but the outlier pair's gap remained even after accounting for it — a contributor, not the driver.</li>
+        <li><b>Look for a mechanism, not just a correlate.</b> The model version rollout explained the timing directly: every other pair improved sharply after the upgrade, one pair barely moved.</li>
+        <li><b>Recommend, but don't overclaim.</b> The metric alone can't distinguish a real quality problem from a stylistic edit — so the recommendation includes a human verification step before committing resources.</li>
+      </ol>
+    </div>
+  </details>
+
+</div>
+
+<script>
+(function(){
+  const LANGS = ["en-fr","en-de","en-es","en-ja","en-zh","en-pt"];
+  const CONTENT = ["technical","legal","casual","marketing"];
+  const CONTENT_DIFFICULTY = {technical:1.15, legal:1.2, casual:0.85, marketing:0.9};
+  const OUTLIER = "en-ja";
+  let data = [];
+
+  function rnd(mean, sd){
+    let u=0,v=0;
+    while(u===0) u=Math.random();
+    while(v===0) v=Math.random();
+    return mean + sd * Math.sqrt(-2*Math.log(u)) * Math.cos(2*Math.PI*v);
+  }
+
+  function generate(){
+    data = [];
+    for(let i=0;i<4000;i++){
+      const day = Math.floor(Math.random()*90);
+      const lang = LANGS[Math.floor(Math.random()*LANGS.length)];
+      const content = CONTENT[Math.floor(Math.random()*CONTENT.length)];
+      const length = Math.max(4, rnd(18,7) * CONTENT_DIFFICULTY[content]);
+      const isV2 = day >= 45;
+      let base = 0.55 + (lang===OUTLIER ? 0.35 : Math.random()*0.15);
+      let lengthEffect = length * 0.006;
+      let v2Improvement = 0;
+      if(isV2){
+        v2Improvement = (lang===OUTLIER) ? rnd(0.008,0.01) : rnd(0.32,0.06);
+      }
+      let edit = Math.max(0.02, base + lengthEffect + rnd(0,0.06) - v2Improvement);
+      data.push({day, lang, content, length, isV2, edit});
+    }
+  }
+
+  function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+  function stddev(arr){ const m=mean(arr); return Math.sqrt(mean(arr.map(x=>(x-m)**2))); }
+
+  function byLang(rows){
+    const g = {};
+    LANGS.forEach(l=>g[l]=[]);
+    rows.forEach(r=>g[r.lang].push(r));
+    return g;
+  }
+
+  function renderBars(container, entries, opts){
+    opts = opts || {};
+    container.innerHTML = "";
+    const max = Math.max(...entries.map(e=>e.value)) * 1.15;
+    entries.forEach(e=>{
+      const col = document.createElement("div");
+      col.className = "bar-col";
+      const val = document.createElement("div");
+      val.className = "bar-val";
+      val.textContent = e.value.toFixed(3);
+      const bar = document.createElement("div");
+      bar.className = "bar" + (e.hot ? " hot" : "");
+      const label = document.createElement("div");
+      label.className = "bar-label";
+      label.textContent = e.label;
+      col.appendChild(val);
+      col.appendChild(bar);
+      col.appendChild(label);
+      container.appendChild(col);
+      requestAnimationFrame(()=>{
+        setTimeout(()=>{ bar.style.height = Math.max(4,(e.value/max)*130) + "px"; }, 60);
+      });
+    });
+  }
+
+  function reveal(id){
+    document.getElementById(id).classList.add("show");
+  }
+
+  function runInvestigation(){
+    const status = document.getElementById("status");
+    const g = byLang(data);
+
+    // Step 1: symptom
+    const symptomEntries = LANGS.map(l=>({label:l, value:mean(g[l].map(r=>r.edit)), hot:l===OUTLIER}));
+    renderBars(document.getElementById("chart-symptom"), symptomEntries);
+    reveal("sec-symptom");
+
+    setTimeout(()=>{
+      // Step 2: Hypothesis A - reweight by content type
+      const overallDist = {};
+      CONTENT.forEach(c=>{ overallDist[c] = data.filter(r=>r.content===c).length / data.length; });
+      function reweightedMean(rows){
+        let total=0, weightSum=0;
+        CONTENT.forEach(c=>{
+          const subset = rows.filter(r=>r.content===c);
+          if(subset.length===0) return;
+          const w = overallDist[c];
+          total += mean(subset.map(r=>r.edit)) * w;
+          weightSum += w;
+        });
+        return total/weightSum;
+      }
+      const rawOutlier = mean(g[OUTLIER].map(r=>r.edit));
+      const reweighted = reweightedMean(g[OUTLIER]);
+      const delta = Math.abs(reweighted-rawOutlier);
+      document.getElementById("stat-a").innerHTML =
+        `Raw ${OUTLIER} average: <b>${rawOutlier.toFixed(3)}</b> &nbsp;→&nbsp; content-mix-adjusted: <b>${reweighted.toFixed(3)}</b> &nbsp;(Δ ${delta.toFixed(3)})`;
+      document.getElementById("verdict-a").style.display = "inline-flex";
+      reveal("sec-a");
+    }, 900);
+
+    setTimeout(()=>{
+      // Step 3: Hypothesis B - length correlation + residual
+      const lengths = data.map(r=>r.length);
+      const edits = data.map(r=>r.edit);
+      const mL = mean(lengths), mE = mean(edits);
+      const cov = mean(lengths.map((l,i)=>(l-mL)*(edits[i]-mE)));
+      const r = cov/(stddev(lengths)*stddev(edits));
+      const slope = cov/(stddev(lengths)**2);
+      const intercept = mE - slope*mL;
+      const residualOutlier = mean(g[OUTLIER].map(row=>row.edit - (slope*row.length+intercept)));
+      const residualOthers = mean(data.filter(r=>r.lang!==OUTLIER).map(row=>row.edit - (slope*row.length+intercept)));
+      document.getElementById("stat-b").innerHTML =
+        `Correlation r = <b>${r.toFixed(2)}</b> &nbsp;·&nbsp; residual for ${OUTLIER}: <b>${residualOutlier.toFixed(3)}</b> vs. fleet average: <b>${residualOthers.toFixed(3)}</b>`;
+      document.getElementById("verdict-b").style.display = "inline-flex";
+      reveal("sec-b");
+    }, 1800);
+
+    setTimeout(()=>{
+      // Step 4: Hypothesis C - v1 vs v2 per language, t-test
+      const entries = [];
+      let outlierPct, outlierT, othersMinT=99, othersMaxPct=0;
+      LANGS.forEach(l=>{
+        const pre = g[l].filter(r=>!r.isV2).map(r=>r.edit);
+        const post = g[l].filter(r=>r.isV2).map(r=>r.edit);
+        const mPre = mean(pre), mPost = mean(post);
+        const pct = ((mPre-mPost)/mPre)*100;
+        const se = Math.sqrt((stddev(pre)**2)/pre.length + (stddev(post)**2)/post.length);
+        const t = (mPre-mPost)/se;
+        entries.push({label:l, value:pct, hot:l===OUTLIER});
+        if(l===OUTLIER){ outlierPct=pct; outlierT=t; }
+      });
+      renderBars(document.getElementById("chart-c"), entries.map(e=>({label:e.label, value:Math.max(e.value,0.5), hot:e.hot})));
+      document.getElementById("stat-c").innerHTML =
+        `Bars show % drop in edit distance after the v2 rollout. Every pair improved sharply except <b>${OUTLIER}</b> (${outlierPct.toFixed(1)}% change, t=${outlierT.toFixed(2)}) — the rest of the fleet improved 40–80%.`;
+      document.getElementById("verdict-c").style.display = "inline-flex";
+      reveal("sec-c");
+    }, 2700);
+
+    setTimeout(()=>{
+      document.getElementById("final-headline").textContent = `Prioritize ${OUTLIER} for targeted fine-tuning`;
+      document.getElementById("final-note").textContent =
+        `The v2 model rollout cut edit distance sharply for every language pair except ${OUTLIER}. The most likely explanation is under-representation of this language pair in v2's training mix — not content difficulty, not sentence length.`;
+      reveal("sec-final");
+      status.textContent = "Investigation complete.";
+    }, 3600);
+  }
+
+  document.getElementById("genBtn").addEventListener("click", function(){
+    generate();
+    document.getElementById("status").textContent = `Generated ${data.length} translation events across ${LANGS.length} language pairs, 90 days, v1→v2 rollout at day 45.`;
+    document.getElementById("runBtn").disabled = false;
+    document.getElementById("resetBtn").disabled = false;
+    this.disabled = true;
+  });
+
+  document.getElementById("runBtn").addEventListener("click", function(){
+    this.disabled = true;
+    document.getElementById("status").textContent = "Running investigation…";
+    runInvestigation();
+  });
+
+  document.getElementById("resetBtn").addEventListener("click", function(){
+    location.reload();
+  });
+})();
+</script>
+</body>
+</html>
