@@ -17,13 +17,15 @@ limitation to gloss over.
 import os
 import psycopg2
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
-
 def main():
-    if not DATABASE_URL:
-        raise RuntimeError("DATABASE_URL is not set.")
-    conn = psycopg2.connect(DATABASE_URL)
+    # Διαβάζουμε το DATABASE_URL τη στιγμή που καλείται η main
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        raise RuntimeError("DATABASE_URL is not set. Export it or put it in a local .env file.")
+    
+    # Σύνδεση με sslmode='require' για τη Supabase
+    conn = psycopg2.connect(db_url, sslmode='require')
+    
     try:
         with conn.cursor() as cur:
             cur.execute(
