@@ -64,5 +64,20 @@ docker compose up airflow-init   # first time only
 docker compose up
 # open http://localhost:8080 (admin / admin), trigger `translation_pageview_pipeline`
 ```
+## 📊 Live Dashboard (Streamlit)
+
+Beyond the command-line analysis, this module includes a live, interactive dashboard built with **Streamlit** and **Plotly**. It connects directly to the Supabase database and visualizes the `language_coverage_gap` findings as dynamic bar charts.
+
+**Run it locally:**
+```bash
+pip install streamlit plotly
+streamlit run dashboard.py
+
+🤖 AI-Assisted Hypothesis Generation (Gemini)
+To demonstrate the "investigative" and "AI-tooling" side of the role, a separate script feeds the pattern discovered by analyze_coverage_gap.py into an LLM (gemini-2.5-flash). The model generates three plausible hypotheses for why the gap exists, suggests specific metrics to test them, and provides a critical evaluation of whether the data could indicate a translation quality issue — all in plain language suitable for a Product Manager or Linguist.
+
+Run it locally:
+export GEMINI_API_KEY="your_google_api_key"
+python3 llm_coverage_analysis.py
 
 **Honest scope note:** this local Airflow only runs while `docker compose up` is running on this machine — it is not a 24/7 production scheduler the way the GitHub Actions workflow is. It's here to demonstrate DAG design, task dependencies, and dbt orchestration, not to replace the always-on path in option A. Both are kept because they demonstrate different things: A is "this actually runs unattended," B is "I can build and read a DAG."
