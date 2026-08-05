@@ -7,7 +7,7 @@ This branch exists specifically to demonstrate the kind of analysis described in
 ## The question
 
 > Why do users edit some language pairs' translations far more than others?
-### 🎮 Live Interactive Demo
+
 
 ## 🎮 Live Interactive Demo
 
