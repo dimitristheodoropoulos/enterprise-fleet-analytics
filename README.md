@@ -106,6 +106,9 @@ Open the `Enterprise_Fleet_Analytics.pbix` file in Power BI Desktop and hit Refr
 * Fuel efficiency degradation maps against high Beaufort weather states.
 * Fuel consumption trends by hull type and asset age profile.
 
+🛠️ Data Engineering Showcase (ETL Pipeline)
+To complement the investigative analytics showcased above, this repository includes a standalone, real-world ETL pipeline. It extracts live Wikipedia pageview data via a public REST API, loads it into a cloud PostgreSQL database (Supabase), transforms it using dbt (SQL modeling), and orchestrates the full workflow with an Airflow DAG. See data_pipeline/README.md for the full technical breakdown.
+
 ## 💰 Finance Reconciliation Extension
 
 See [`finance/README.md`](finance/README.md) for full details, endpoints, and a verified end-to-end run.
