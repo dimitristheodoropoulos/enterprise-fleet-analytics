@@ -1,0 +1,14 @@
+version: 2
+
+models:
+  - name: daily_ranking
+    description: "Same-day pageview rank of each language edition, per topic"
+    columns:
+      - name: rank_that_day
+        tests: [not_null]
+
+  - name: language_coverage_gap
+    description: "Each language edition's total pageviews as a % of the leading edition, per topic — flags editions that may be worth investigating further"
+    columns:
+      - name: pct_of_top_edition
+        tests: [not_null]

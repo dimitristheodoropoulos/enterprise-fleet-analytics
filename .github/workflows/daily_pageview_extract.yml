@@ -1,0 +1,37 @@
+# Move this file to .github/workflows/daily_pageview_extract.yml at the repo root
+# (GitHub only recognizes workflows in that exact location).
+#
+# Before this runs, add DATABASE_URL as a repository secret:
+# GitHub repo -> Settings -> Secrets and variables -> Actions -> New repository secret.
+
+name: Daily pageview extract
+
+on:
+  schedule:
+    - cron: "0 6 * * *"   # 06:00 UTC daily
+  workflow_dispatch: {}     # lets you trigger it manually from the Actions tab
+
+jobs:
+  extract-and-load:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: data_pipeline
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - run: pip install -r requirements.txt
+
+      - name: Extract pageviews
+        run: python extract_pageviews.py
+        env:
+          DAYS_BACK: "2"   # daily run only needs the last couple of days
+
+      - name: Load into Supabase
+        run: python load_to_supabase.py
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

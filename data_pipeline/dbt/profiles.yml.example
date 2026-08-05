@@ -1,0 +1,23 @@
+# EXAMPLE ONLY — copy the relevant part to ~/.dbt/profiles.yml (dbt's default
+# location, outside the repo) or set DBT_PROFILES_DIR to point here.
+# Do NOT commit a profiles.yml containing real credentials.
+#
+# Get these values from Supabase -> Settings -> Database -> Connection parameters.
+# Export them in your shell (or a local .env you source) before running `dbt run`:
+#   export SUPABASE_HOST=...
+#   export SUPABASE_USER=...
+#   export SUPABASE_PASSWORD=...
+#   export SUPABASE_DBNAME=...
+
+translation_pipeline:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('SUPABASE_HOST') }}"
+      user: "{{ env_var('SUPABASE_USER') }}"
+      password: "{{ env_var('SUPABASE_PASSWORD') }}"
+      port: 5432
+      dbname: "{{ env_var('SUPABASE_DBNAME') }}"
+      schema: public
+      threads: 4

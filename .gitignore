@@ -34,3 +34,9 @@ ehthumbs.db
 
 # Large trained models (regenerate locally via models/run_training.py)
 models/fuel_model.pkl
+# data_pipeline
+data_pipeline/*.csv
+data_pipeline/airflow/.env
+data_pipeline/dbt/profiles.yml
+.env
+.coverage

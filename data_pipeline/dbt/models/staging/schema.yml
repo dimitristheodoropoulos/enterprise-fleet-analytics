@@ -1,0 +1,21 @@
+version: 2
+
+sources:
+  - name: raw
+    schema: public
+    tables:
+      - name: raw_pageviews
+        description: "Daily Wikipedia pageview counts per topic/language edition, loaded by load_to_supabase.py"
+
+models:
+  - name: stg_pageviews
+    description: "Cleaned pageview events — one row per topic/language edition/day"
+    columns:
+      - name: topic
+        tests: [not_null]
+      - name: project
+        tests: [not_null]
+      - name: date
+        tests: [not_null]
+      - name: views
+        tests: [not_null]
