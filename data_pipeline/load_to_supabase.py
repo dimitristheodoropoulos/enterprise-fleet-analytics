@@ -2,28 +2,27 @@
 load_to_supabase.py
 
 Loads raw_pageviews.csv into a Supabase (hosted Postgres) table.
-Reads the connection string from the DATABASE_URL environment variable —
-never hardcode credentials in the script or commit them to git.
-
-Get DATABASE_URL from: Supabase project -> Settings -> Database -> Connection string (URI).
-Locally, put it in a .env file (add .env to .gitignore) or export it in your shell.
-In GitHub Actions, set it as a repository secret (see the workflow file).
+Reads the connection string from the DATABASE_URL environment variable.
+This script now automatically loads from the .env file using python-dotenv.
 """
 
 import os
 import pandas as pd
 import psycopg2
 from psycopg2.extras import execute_values
+from dotenv import load_dotenv  # <-- Η βιβλιοθήκη που χρειαζόμαστε
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
-
+# Φόρτωση του αρχείου .env που βρίσκεται στον ίδιο φάκελο
+load_dotenv()
 
 def get_connection():
-    if not DATABASE_URL:
+    db_url = os.getenv("DATABASE_URL")
+    if not db_url:
         raise RuntimeError(
-            "DATABASE_URL is not set. Export it or put it in a local .env file."
+            "DATABASE_URL is not set. Make sure .env file exists in this folder "
+            "and contains DATABASE_URL=postgresql://..."
         )
-    return psycopg2.connect(DATABASE_URL)
+    return psycopg2.connect(db_url, sslmode='require')
 
 
 def ensure_schema(conn):

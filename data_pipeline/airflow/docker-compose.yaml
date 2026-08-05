@@ -15,9 +15,8 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
-    _PIP_ADDITIONAL_REQUIREMENTS: 'requests pandas psycopg2-binary dbt-postgres==1.8.0'
+    _PIP_ADDITIONAL_REQUIREMENTS: 'requests pandas psycopg2-binary'
     DATABASE_URL: ${DATABASE_URL}
-    # dbt's profiles.yml.example expects these four separately (not the single URL)
     SUPABASE_HOST: ${SUPABASE_HOST}
     SUPABASE_USER: ${SUPABASE_USER}
     SUPABASE_PASSWORD: ${SUPABASE_PASSWORD}
@@ -38,15 +37,36 @@ services:
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
 
+  # ΕΔΩ ΕΙΝΑΙ Η ΔΙΟΡΘΩΣΗ: Αφαιρέσαμε το <<: *airflow-common 
+  # και βάλαμε όλες τις μεταβλητές ρητά για να ταιριάζει με την παλιά σας compose.
   airflow-init:
-    <<: *airflow-common
+    image: apache/airflow:2.9.3
     entrypoint: /bin/bash
+    environment:
+      # Κοινές μεταβλητές
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+      _PIP_ADDITIONAL_REQUIREMENTS: 'requests pandas psycopg2-binary'
+      DATABASE_URL: ${DATABASE_URL}
+      SUPABASE_HOST: ${SUPABASE_HOST}
+      SUPABASE_USER: ${SUPABASE_USER}
+      SUPABASE_PASSWORD: ${SUPABASE_PASSWORD}
+      SUPABASE_DBNAME: ${SUPABASE_DBNAME}
+      # Δημιουργία χρήστη admin (μεταβλητές για αυτόματη δημιουργία)
+      _AIRFLOW_WWW_USER_USERNAME: 'admin'
+      _AIRFLOW_WWW_USER_PASSWORD: 'admin'
+      _AIRFLOW_WWW_USER_EMAIL: 'admin@example.com'
+      _AIRFLOW_WWW_USER_FIRSTNAME: 'Dimitris'
+      _AIRFLOW_WWW_USER_LASTNAME: 'Theodoropoulos'
+      _AIRFLOW_WWW_USER_ROLE: 'Admin'
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ../data_pipeline:/opt/airflow/data_pipeline
+    depends_on:
+      - postgres
     command: >
-      -c "airflow db init &&
-          airflow users create
-          --username admin --password admin
-          --firstname Dimitris --lastname Theodoropoulos
-          --role Admin --email admin@example.com"
+      -c "airflow db init"
 
   airflow-webserver:
     <<: *airflow-common
