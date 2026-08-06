@@ -82,7 +82,7 @@ def run(days_back: int = 30) -> pd.DataFrame:
                         "views": item["views"],
                     }
                 )
-            time.sleep(0.2)  # polite pacing, well under Wikimedia's rate limits
+            time.sleep(1.0)  # polite pacing, well under Wikimedia's rate limits
 
     df = pd.DataFrame(rows)
     return df
