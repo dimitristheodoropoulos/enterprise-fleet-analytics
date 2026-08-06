@@ -34,9 +34,22 @@ ehthumbs.db
 
 # Large trained models (regenerate locally via models/run_training.py)
 models/fuel_model.pkl
-# data_pipeline
+
+# Data Pipeline
 data_pipeline/*.csv
 data_pipeline/airflow/.env
+data_pipeline/airflow/logs/
 data_pipeline/dbt/profiles.yml
-.env
+data_pipeline/dbt/target/
+data_pipeline/dbt/logs/
+
+# Translation Quality (regenerated on run)
+translation_quality/*.csv
+
+# MongoDB local env (already covered by *.env, but safe to be explicit)
+mongodb/.env
+
+# Coverage reports
 .coverage
+# translation_review - raw Tatoeba exports (large, regenerate via fetch_tatoeba_pairs.py)
+translation_review/*.tsv
