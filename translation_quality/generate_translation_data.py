@@ -68,6 +68,12 @@ CONTENT_TYPE_WEIGHTS = {
     "en-it": [0.30, 0.32, 0.28, 0.10],
 }
 
+# --- ΝΕΕΣ ΔΙΑΣΤΑΣΕΙΣ ΓΙΑ ΤΗΝ ΑΓΓΕΛΙΑ ---
+PROVIDERS = ["Gemini", "OpenAI", "Internal"]
+CUSTOMER_TIERS = ["free", "premium", "enterprise"]
+TRAFFIC_VOLUMES = ["low", "medium", "high"]
+# ---------------------------------------
+
 rows = []
 row_id = 1
 
@@ -80,6 +86,12 @@ for day in range(N_DAYS):
     for _ in range(n_events_today):
         lang_pair = RNG.choice(LANGUAGE_PAIRS)
         content_type = RNG.choice(CONTENT_TYPES, p=CONTENT_TYPE_WEIGHTS[lang_pair])
+
+        # --- ΤΥΧΑΙΑ ΕΠΙΛΟΓΗ ΝΕΩΝ ΔΙΑΣΤΑΣΕΩΝ ---
+        provider = RNG.choice(PROVIDERS)
+        customer_tier = RNG.choice(CUSTOMER_TIERS, p=[0.4, 0.35, 0.25]) # More free users
+        traffic_volume = RNG.choice(TRAFFIC_VOLUMES, p=[0.2, 0.5, 0.3]) # Mostly medium traffic
+        # ---------------------------------------
 
         # Source sentence length (words) -- log-normal, content-type dependent
         base_len = {"marketing": 18, "documentation": 35, "support_ticket": 22, "legal": 48}[content_type]
@@ -108,6 +120,9 @@ for day in range(N_DAYS):
             "timestamp": date.strftime("%Y-%m-%d"),
             "language_pair": lang_pair,
             "ai_model_version": model_version,
+            "ai_model_provider": provider,        # Νέο πεδίο
+            "customer_tier": customer_tier,      # Νέο πεδίο
+            "traffic_volume": traffic_volume,    # Νέο πεδίο
             "content_type": content_type,
             "sentence_length_words": sentence_length,
             "latency_ms": latency_ms,
