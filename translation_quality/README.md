@@ -17,7 +17,7 @@ No setup required. Generate the synthetic dataset, step through Hypotheses A, B,
 
 ## What this module does
 
-* **`generate_translation_data.py`** — builds a synthetic-but-realistic dataset of ~4,000 translation events over 90 days: language pair, content type, sentence length, model version (v1 → v2 rollout at day 45), user edit distance, latency, and quality score. The generator deliberately embeds a root cause (see below) rather than pure random noise, so the investigation script has something real to uncover.
+* **`generate_translation_data.py`** — builds a synthetic-but-realistic dataset of ~4,000 translation events over 90 days: language pair, content type, sentence length, model version (v1 → v2 rollout at day 45), AI model provider, customer tier, traffic volume, user edit distance, latency, and quality score. The generator deliberately embeds a root cause (see below) rather than pure random noise, so the investigation script has something real to uncover. The provider/customer-tier/traffic-volume fields exist specifically to support comparisons "across language pairs, AI models, providers, customers, [and] traffic levels" as the job posting describes, beyond the core hypothesis-driven investigation below.
 * **`analyze_edit_drift.py`** — the investigation itself, run as a sequence of hypotheses:
   1. **Surface the pattern** — mean edit distance by language pair.
   2. **Hypothesis A (content-type mix)** — re-weight each language pair to a common content-type distribution. Ruled out: the gap barely narrows.

@@ -19,7 +19,8 @@ import os
 import time
 import requests
 import pandas as pd
-from datetime import datetime, timedelta
+from mongo_raw_store import store_raw_response
+from datetime import datetime, timedelta, timezone
 
 # Wikimedia requires a descriptive User-Agent identifying the client.
 HEADERS = {
@@ -52,18 +53,28 @@ ARTICLES = {
 }
 
 
-def fetch_pageviews(project: str, article: str, start: str, end: str) -> list[dict]:
+def fetch_pageviews(project: str, article: str, start: str, end: str, topic: str = "") -> list[dict]:
     url = BASE_URL.format(project=project, article=article, start=start, end=end)
     resp = requests.get(url, headers=HEADERS, timeout=30)
     if resp.status_code == 404:
         # Article/edition combination has no data for the range — skip, don't crash.
         return []
+    if resp.status_code == 429:
+        # Rate limited -- back off, wait longer, and skip this one call rather
+        # than crashing the whole run. A real production version would retry
+        # with backoff; for this portfolio run, skipping is enough to show
+        # the pipeline handles it gracefully instead of dying.
+        print(f"  [rate limit] 429 for {project}/{article} -- backing off 10s and skipping this call.")
+        time.sleep(10)
+        return []
     resp.raise_for_status()
-    return resp.json().get("items", [])
+    payload = resp.json()
+    store_raw_response(topic, project, article, start, end, payload)
+    return payload.get("items", [])
 
 
 def run(days_back: int = 30) -> pd.DataFrame:
-    end_date = datetime.utcnow().date() - timedelta(days=1)  # API lags ~1 day
+    end_date = datetime.now(timezone.utc).date() - timedelta(days=1)  # API lags ~1 day
     start_date = end_date - timedelta(days=days_back)
     start_str = start_date.strftime("%Y%m%d")
     end_str = end_date.strftime("%Y%m%d")
@@ -71,7 +82,7 @@ def run(days_back: int = 30) -> pd.DataFrame:
     rows = []
     for topic, editions in ARTICLES.items():
         for project, article in editions.items():
-            items = fetch_pageviews(project, article, start_str, end_str)
+            items = fetch_pageviews(project, article, start_str, end_str, topic=topic)
             for item in items:
                 rows.append(
                     {
@@ -82,7 +93,7 @@ def run(days_back: int = 30) -> pd.DataFrame:
                         "views": item["views"],
                     }
                 )
-            time.sleep(1.0)  # polite pacing, well under Wikimedia's rate limits
+            time.sleep(2.0)  # polite pacing, well under Wikimedia's rate limits
 
     df = pd.DataFrame(rows)
     return df
