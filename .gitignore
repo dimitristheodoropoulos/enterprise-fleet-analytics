@@ -53,3 +53,4 @@ mongodb/.env
 .coverage
 # translation_review - raw Tatoeba exports (large, regenerate via fetch_tatoeba_pairs.py)
 translation_review/*.tsv
+data_pipeline/logs/

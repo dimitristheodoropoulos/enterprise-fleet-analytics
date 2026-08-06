@@ -20,7 +20,7 @@ It's a genuinely public, real-time, free, no-API-key data source that is inheren
 
 | Posting asks for | Where it's covered |
 |---|---|
-| Extracting/combining data from SQL, NoSQL, logs, APIs, CSV exports | Live API extraction → CSV → cloud Postgres, in one pipeline |
+| Extracting/combining data from SQL, NoSQL, logs, APIs, CSV exports | Live API extraction → raw JSON archived in **MongoDB (NoSQL)** → flattened CSV → cloud **Postgres (SQL)**, plus structured **JSONL run logs** (`logs/extract_runs.jsonl`) parsed by a separate monitoring script (`parse_extract_logs.py`) |
 | Comparing results across language pairs / dimensions | `language_coverage_gap` view compares every edition per topic |
 | Building repeatable reports, scripts, and monitoring processes | Scheduled GitHub Actions run, idempotent upserts (`ON CONFLICT DO UPDATE`) so re-runs are safe |
 | Separating real signals from coincidence | The analysis script explicitly stops short of claiming a cause with only pageview data — flags it as a question instead of overreaching |

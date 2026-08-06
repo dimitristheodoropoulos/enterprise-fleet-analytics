@@ -21,6 +21,23 @@ import requests
 import pandas as pd
 from mongo_raw_store import store_raw_response
 from datetime import datetime, timedelta, timezone
+import json
+
+LOG_PATH = os.path.join(os.path.dirname(__file__), "logs", "extract_runs.jsonl")
+
+
+def _log_call(status: str, project: str, article: str, topic: str, item_count: int = 0) -> None:
+    os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "topic": topic,
+        "project": project,
+        "article": article,
+        "status": status,
+        "item_count": item_count,
+    }
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
 # Wikimedia requires a descriptive User-Agent identifying the client.
 HEADERS = {
@@ -58,6 +75,7 @@ def fetch_pageviews(project: str, article: str, start: str, end: str, topic: str
     resp = requests.get(url, headers=HEADERS, timeout=30)
     if resp.status_code == 404:
         # Article/edition combination has no data for the range — skip, don't crash.
+        _log_call("not_found", project, article, topic)
         return []
     if resp.status_code == 429:
         # Rate limited -- back off, wait longer, and skip this one call rather
@@ -65,12 +83,15 @@ def fetch_pageviews(project: str, article: str, start: str, end: str, topic: str
         # with backoff; for this portfolio run, skipping is enough to show
         # the pipeline handles it gracefully instead of dying.
         print(f"  [rate limit] 429 for {project}/{article} -- backing off 10s and skipping this call.")
+        _log_call("rate_limited", project, article, topic)
         time.sleep(10)
         return []
     resp.raise_for_status()
     payload = resp.json()
     store_raw_response(topic, project, article, start, end, payload)
-    return payload.get("items", [])
+    items = payload.get("items", [])
+    _log_call("ok", project, article, topic, item_count=len(items))
+    return items
 
 
 def run(days_back: int = 30) -> pd.DataFrame:
