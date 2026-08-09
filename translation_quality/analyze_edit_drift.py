@@ -17,7 +17,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy import stats
 
-df = pd.read_csv("translation_events.csv")
+# --- ΝΕΟ: Φόρτωση δεδομένων από MongoDB ή CSV (με fallback) ---
+from fetch_data import get_data
+df = get_data()
+# ---------------------------------------------------------------
 
 print("=" * 70)
 print("STEP 1 — Surface the pattern")
