@@ -9,7 +9,6 @@ import os
 import pandas as pd
 from pymongo import MongoClient
 from dotenv import load_dotenv
-import certifi
 
 # Load .env
 env_path = os.path.join(os.path.dirname(__file__), "..", "mongodb", ".env")
@@ -53,4 +52,4 @@ collection.delete_many({})
 result = collection.insert_many(records)
 
 print(f"✅ Uploaded {len(result.inserted_ids)} documents to MongoDB Atlas.")
-print(f"📂 Database: translation_pipeline, Collection: translation_events")
+print("📂 Database: translation_pipeline, Collection: translation_events")

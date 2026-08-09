@@ -12,7 +12,6 @@ import os
 import pandas as pd
 from pymongo import MongoClient
 from dotenv import load_dotenv
-import certifi
 
 # Optional: set this to False to force CSV mode for development
 USE_MONGO = True   # Set to False to ignore MongoDB and use CSV

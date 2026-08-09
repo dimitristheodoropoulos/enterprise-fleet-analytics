@@ -5,7 +5,6 @@ Performs deep root-cause analysis, hypothesis testing, and statistical
 segmentation on the translation fleet analytics data pulled from MongoDB.
 """
 
-import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns

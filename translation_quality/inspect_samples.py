@@ -6,7 +6,6 @@ performance metrics rather than raw text, this script profiles the
 operational characteristics of worst-performing translation events.
 """
 
-import pandas as pd
 from fetch_data import get_data
 
 def inspect_telemetry_outliers(top_n=5):
