@@ -1,48 +1,514 @@
-# Translation Review: Real EN→EL Sentence Evaluation 🇬🇧🇬🇷
+# Translation Review: Manual EN→EL Machine Translation Evaluation 🇬🇧🇬🇷
 
-The other modules in this repo ([`translation_quality/`](../translation_quality) and [`data_pipeline/`](../data_pipeline)) demonstrate investigative methodology and data engineering. This module is different on purpose: it's **real sentences, a real machine translation, and my own real linguistic judgment** — not synthetic data and not something a script can do on its own.
+The other modules in this repository — [`translation_quality/`](../translation_quality) and [`data_pipeline/`](../data_pipeline) — focus on investigative analytics and data engineering. This module addresses a different aspect of AI evaluation: **manual human assessment of machine-translated output using real English sentences and human-contributed Greek reference translations**.
 
-The job posting is explicit that this matters:
+The purpose is to demonstrate an evaluation workflow that combines automated data collection and machine-translation generation with **human linguistic judgment**.
 
-> *"Evaluating multilingual AI output for meaning, terminology, tone, formality, grammar, pronouns, and consistency... using AI tools, dictionaries, and other resources to investigate languages you don't speak, while recognizing when expert linguistic input is needed."*
+For the EN→EL language pair, the evaluation is performed by a native Greek speaker, allowing direct assessment of meaning, grammar, register, terminology, and naturalness without relying exclusively on automated evaluation metrics.
 
-I'm a native Greek speaker, so for the EN↔EL pair specifically, I can do this evaluation directly rather than needing a third-party linguist — which is exactly the situation the posting describes for "at least one additional language (preferably European)."
+The approach is particularly relevant to multilingual AI evaluation workflows where automated metrics can identify potential problems, while human review is required to determine their linguistic significance.
 
-## What's in here
+---
 
-| File | Role |
-|---|---|
-| `fetch_tatoeba_pairs.py` | Downloads real English sentences with real human Greek translations from [Tatoeba](https://tatoeba.org) — a genuine, community-contributed multilingual sentence corpus |
-| `run_mt_and_build_template.py` | Runs each English sentence through a real, free machine-translation engine (Google Translate, via `deep-translator`, no API key), and builds `review_template.csv` with the MT output next to the human reference |
-| `review_template.csv` | Generated file: id, English source, human reference translation, MT output, and empty columns for my own judgment |
-| `summarize_review.py` | Once the judgment columns are filled in by hand, produces a short repeatable summary — verdict breakdown, flagged sentences for follow-up |
+## 🎯 Objective
 
-## The evaluation columns (filled in by hand, not by a script)
+The module implements a small, reproducible workflow for manually evaluating English-to-Greek machine translation:
 
-- **meaning_correct** — does the MT output actually say the same thing as the source? (yes / no / partially)
-- **tone_formality_notes** — did the MT preserve register (formal/informal), or flatten it?
-- **grammar_pronoun_notes** — Greek has grammatical gender and case agreement that English doesn't; this is where MT engines most often slip
-- **overall_verdict** — good / needs review / wrong
-- **your_comment** — free-text, the kind of note I'd actually hand to an engineer or PM
+```text
+Tatoeba
+Community-contributed EN→EL sentences
+            │
+            ▼
+     English source
+            │
+            ▼
+     Machine Translation
+            │
+            ▼
+      Google Translate
+            │
+            ▼
+ ┌───────────────────────────┐
+ │ Human Evaluation           │
+ │                           │
+ │ Meaning                    │
+ │ Tone / Formality           │
+ │ Grammar / Pronouns        │
+ │ Overall Verdict            │
+ │ Reviewer Comments         │
+ └───────────────────────────┘
+            │
+            ▼
+     Review Summary
+```
 
-## Why this design
+The goal is not to produce a statistically representative benchmark. Instead, the module demonstrates the **end-to-end methodology for obtaining translation samples, generating MT output, manually reviewing the results, and summarizing the findings**.
 
-The posting draws a real distinction between "reporting a metric" and "investigating and evaluating." A script can compute edit distance or BLEU score between two strings, but it can't tell you *why* a translation feels unnatural, or whether a grammatical case was wrong versus just unusual style. That judgment call is the actual skill being asked for — so I built the pipeline to get real sentences and a real MT output in front of me, and did the evaluation myself rather than faking it with another automated score.
+---
 
-## Running it
+# 📂 What's in Here
+
+| File                           | Role                                                                                                                        |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `fetch_tatoeba_pairs.py`       | Downloads English sentences with community-contributed Greek translations from [Tatoeba](https://tatoeba.org)               |
+| `run_mt_and_build_template.py` | Sends each English sentence to Google Translate through `deep-translator` and generates the review CSV                      |
+| `review_template.csv`          | Generated review dataset containing source sentences, human reference translations, MT output, and manual-evaluation fields |
+| `summarize_review.py`          | Summarizes completed manual evaluations, including verdict distributions and flagged sentences                              |
+
+The workflow deliberately separates **data acquisition**, **machine translation**, and **human evaluation**.
+
+---
+
+# 🌍 Data Source
+
+The source sentences are obtained from **Tatoeba**, a community-contributed multilingual sentence corpus.
+
+The workflow uses:
+
+* English source sentences.
+* Greek human-contributed translations.
+* Tatoeba sentence identifiers.
+
+The Greek translations are treated as **human reference translations**, not as infallible gold-standard translations. Human-contributed references can themselves vary in style, wording, and quality.
+
+This distinction is important when interpreting disagreements between the MT output and the reference.
+
+A difference from the reference translation does not automatically mean that the MT output is incorrect. A valid translation can use different wording while preserving the original meaning.
+
+---
+
+# 🤖 Machine Translation
+
+The English source sentences are translated using **Google Translate** through the `deep-translator` Python package.
+
+The workflow therefore compares:
+
+```text
+English Source
+      │
+      ├──────────────► Human-contributed Greek Reference
+      │
+      └──────────────► Google Translate MT Output
+```
+
+The purpose is not to benchmark Google Translate against other commercial systems.
+
+Instead, it provides a concrete machine-translation output that can be evaluated manually for linguistic quality.
+
+---
+
+# 🧑‍⚖️ Manual Evaluation
+
+The evaluation fields are intentionally completed **by hand rather than generated by another automated model**.
+
+This allows the reviewer to distinguish between different types of translation problems instead of reducing the evaluation to a single numerical score.
+
+## Evaluation Columns
+
+### `meaning_correct`
+
+Does the Greek translation preserve the meaning of the English source?
+
+Possible values:
+
+```text
+yes
+partially
+no
+```
+
+The distinction between `partially` and `no` is useful because translation errors can range from minor omissions or additions to complete semantic failure.
+
+---
+
+### `tone_formality_notes`
+
+Evaluates whether the translation preserves the source's:
+
+* Formality.
+* Informality.
+* Professional register.
+* Conversational tone.
+* Degree of directness.
+* Overall communicative style.
+
+A translation can be grammatically correct while still changing the intended register.
+
+---
+
+### `grammar_pronoun_notes`
+
+Records grammatical observations such as:
+
+* Gender agreement.
+* Case.
+* Number agreement.
+* Verb agreement.
+* Pronoun choice.
+* Article usage.
+* Word order.
+* Other grammatical inconsistencies.
+
+Greek provides useful evaluation dimensions here because grammatical information such as gender, case, and agreement can require choices that are not explicitly marked in the same way in English.
+
+The purpose is to check whether the MT output preserves these grammatical relationships appropriately, rather than assuming that every difference from the reference represents an error.
+
+---
+
+### `overall_verdict`
+
+A high-level assessment of the translation:
+
+```text
+good
+needs review
+wrong
+```
+
+The verdict is intentionally broader than a purely grammatical score because translation quality depends on multiple dimensions simultaneously.
+
+---
+
+### `your_comment`
+
+Free-text qualitative analysis.
+
+This field captures the type of observation that could be useful to:
+
+* An ML engineer.
+* A localization engineer.
+* A product manager.
+* A linguist.
+* An evaluation/research team.
+
+Examples of useful observations include:
+
+* Semantic ambiguity.
+* Incorrect terminology.
+* Unnatural word choice.
+* Register mismatch.
+* Grammatical agreement error.
+* Pronoun ambiguity.
+* Missing information.
+* Unnecessary literal translation.
+* Correct translation using different wording from the reference.
+
+---
+
+# 🔬 Why Human Evaluation?
+
+Automated metrics such as BLEU, edit distance, or string-level similarity can provide useful quantitative signals, but they do not capture every aspect of translation quality.
+
+For example, two translations may have very different surface forms while expressing the same meaning.
+
+Conversely, a translation may have high lexical overlap with a reference while still containing:
+
+* A semantic error.
+* Incorrect grammatical agreement.
+* A register mismatch.
+* An unnatural expression.
+* An inappropriate pronoun.
+* A terminology error.
+
+Modern LLM-based evaluators can also provide automated qualitative assessments, but those evaluations are themselves model judgments and require validation.
+
+This module therefore focuses specifically on **manual human review** for the sampled EN→EL sentences.
+
+The intention is not to claim that automated evaluation is useless, but to demonstrate the complementary role of human linguistic assessment.
+
+---
+
+# 🧪 Evaluation Workflow
+
+The complete workflow is:
+
+### 1. Retrieve source/reference pairs
+
+```bash
+python3 fetch_tatoeba_pairs.py
+```
+
+This obtains a sample of English sentences and their community-contributed Greek translations.
+
+### 2. Generate machine translations
+
+```bash
+python3 run_mt_and_build_template.py
+```
+
+The script sends the English sentences through Google Translate and creates the review template.
+
+### 3. Perform manual evaluation
+
+Open:
+
+```text
+review_template.csv
+```
+
+and fill in the evaluation columns:
+
+```text
+meaning_correct
+tone_formality_notes
+grammar_pronoun_notes
+overall_verdict
+your_comment
+```
+
+### 4. Generate the summary
+
+After completing the manual review:
+
+```bash
+python3 summarize_review.py
+```
+
+The script summarizes:
+
+* Overall verdict distribution.
+* Translation issues identified during review.
+* Sentences requiring follow-up.
+
+---
+
+# 📊 Example Evaluation Structure
+
+The generated CSV follows the general structure:
+
+```text
+id
+english_source
+human_reference
+mt_output
+meaning_correct
+tone_formality_notes
+grammar_pronoun_notes
+overall_verdict
+your_comment
+```
+
+Conceptually:
+
+| Source           | Human Reference | MT Output | Human Judgment    |
+| ---------------- | --------------- | --------- | ----------------- |
+| English sentence | Greek reference | Google MT | Manual assessment |
+
+This structure makes the evaluation auditable because the reviewer can inspect the source, reference, MT output, and reasoning behind the final verdict.
+
+---
+
+# 📏 Why No Automatic BLEU Score?
+
+A BLEU score or similar metric could be added to the pipeline, but it is intentionally not used as the primary evaluation mechanism here.
+
+The purpose of this module is to demonstrate the complementary human-evaluation step.
+
+A future extension could combine:
+
+```text
+Automatic Metrics
+       +
+LLM-based Evaluation
+       +
+Human Evaluation
+```
+
+This would allow comparison between automated signals and human judgments and could be used to investigate cases where the evaluation methods disagree.
+
+---
+
+# 📋 Sampling Strategy
+
+The current implementation evaluates **20 sentences**.
+
+This is intentionally a small sample designed to demonstrate the complete workflow.
+
+It should **not** be interpreted as statistically representative of general English-to-Greek machine-translation quality.
+
+For a larger evaluation, the same pipeline could be extended to hundreds or thousands of sentences using a defined sampling strategy based on factors such as:
+
+* Language pair.
+* Content type.
+* Sentence length.
+* Terminology density.
+* Formality.
+* Ambiguity.
+* Model version.
+* Translation direction.
+
+Targeted sampling would also make it possible to investigate specific failure modes rather than relying only on a uniformly random sample.
+
+---
+
+# ⚠️ Limitations
+
+This module has several intentional limitations.
+
+### Small Sample Size
+
+Only 20 sentences are reviewed.
+
+The results are therefore illustrative and should not be generalized to overall Google Translate EN→EL performance.
+
+### Reference Quality
+
+Tatoeba translations are community-contributed.
+
+They provide useful human references but should not automatically be treated as authoritative gold-standard translations.
+
+### Single MT System
+
+The current implementation evaluates one machine-translation system.
+
+It does not provide a comparative benchmark between multiple MT engines.
+
+### Single Language Pair
+
+The current manual evaluation focuses on:
+
+```text
+English → Greek
+```
+
+The methodology could be extended to additional language pairs where appropriate linguistic expertise is available.
+
+### Human Evaluator
+
+The manual judgments represent the assessment of a single reviewer.
+
+A larger linguistic evaluation would benefit from multiple independent reviewers and an inter-annotator agreement analysis.
+
+### No Statistical Generalization
+
+The purpose is methodology demonstration rather than statistically powered evaluation.
+
+A production evaluation would require a larger and systematically sampled dataset.
+
+---
+
+# 🔎 Relationship to `translation_quality/`
+
+This module complements the broader [`translation_quality/`](../translation_quality) investigation.
+
+The two modules operate at different levels:
+
+```text
+translation_quality/
+        │
+        ▼
+Aggregate / Investigative Analysis
+        │
+        │
+        └────► Detects potential quality drift
+                         │
+                         ▼
+                 translation_review/
+                         │
+                         ▼
+                  Individual Samples
+                         │
+                         ▼
+                   Human Review
+                         │
+                         ▼
+              Linguistic Error Analysis
+```
+
+The broader translation-quality module investigates **patterns and potential causes of quality changes across datasets, language pairs, and model versions**.
+
+This review module demonstrates how individual translation examples can then be inspected manually to understand the actual linguistic phenomena behind observed quality differences.
+
+The two approaches are therefore complementary:
+
+* **Quantitative analysis** helps identify where a problem may exist.
+* **Qualitative review** helps investigate what the problem actually looks like.
+
+---
+
+# 🎯 What This Demonstrates
+
+The module demonstrates practical experience with:
+
+* Multilingual AI evaluation.
+* Machine-translation assessment.
+* Human-in-the-loop evaluation.
+* EN→EL linguistic analysis.
+* Semantic error identification.
+* Grammar and agreement analysis.
+* Tone and register evaluation.
+* Terminology review.
+* Evaluation dataset construction.
+* Reproducible evaluation workflows.
+* Separation of automated and human assessment.
+* Critical interpretation of reference-based metrics.
+
+Most importantly, the workflow does not treat a single automated metric as a complete representation of translation quality.
+
+Instead, it combines **reproducible data acquisition, machine-generated output, structured human evaluation, and explicit documentation of limitations**.
+
+---
+
+# 🚀 Running the Module
+
+From the repository root:
 
 ```bash
 cd translation_review
+
 pip install requests deep-translator
 
-python3 fetch_tatoeba_pairs.py        # downloads real EN-EL pairs, samples 20
-python3 run_mt_and_build_template.py  # gets real MT output, builds the CSV template
-
-# open review_template.csv, fill in the 5 judgment columns by hand
-
-python3 summarize_review.py           # summarizes your completed review
+python3 fetch_tatoeba_pairs.py
+python3 run_mt_and_build_template.py
 ```
 
-## Honesty note
+Then open:
 
-The sentence sample size (20) is small on purpose — this demonstrates the *process* end-to-end, not a large-scale evaluation. In a real role, this same pipeline would scale to hundreds or thousands of sentences, likely with a sampling strategy targeting the language pairs and content types flagged as problematic by the investigation in [`translation_quality/`](../translation_quality).
+```text
+review_template.csv
+```
+
+Complete the five manual evaluation fields:
+
+```text
+meaning_correct
+tone_formality_notes
+grammar_pronoun_notes
+overall_verdict
+your_comment
+```
+
+Finally:
+
+```bash
+python3 summarize_review.py
+```
+
+---
+
+# 🔐 Reproducibility & Credentials
+
+The current workflow uses a translation service through `deep-translator` and does not require a Google API key.
+
+The generated review CSV is an intermediate evaluation artifact.
+
+If the dataset or generated outputs are committed to the repository, the provenance and generation date should be documented so that future reviewers can distinguish between:
+
+* Source corpus data.
+* Machine-generated output.
+* Human annotations.
+* Derived summaries.
+
+---
+
+# 📌 Final Note
+
+This module is deliberately small.
+
+Its purpose is not to claim state-of-the-art machine-translation evaluation or statistically significant EN→EL quality measurements.
+
+Instead, it demonstrates a practical evaluation principle:
+
+> **Automated systems can surface signals, but meaningful multilingual quality analysis often requires inspecting individual outputs and understanding the linguistic context behind the error.**
+
+The resulting workflow provides a foundation that can be scaled to larger datasets, multiple language pairs, multiple MT/LLM systems, and multi-reviewer evaluation when the evaluation scope requires it.

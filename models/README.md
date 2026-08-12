@@ -1,178 +1,633 @@
-# Fuel Consumption Prediction Model
+# Fuel Consumption Prediction & Fleet Analytics Models 🚢📊
 
-This module implements a supervised regression model that predicts vessel fuel consumption from live telemetry and vessel specification data, alongside unsupervised clustering of voyage efficiency profiles, a speed optimization recommender, a fuel-cost risk classifier, and fleet-wide time-series forecasting.
+This module implements a collection of supervised, unsupervised, optimization, and time-series methods for analyzing **synthetic maritime fleet telemetry**.
 
-## 🎯 Problem Framing
+The main components are:
 
-Fuel consumption is one of the largest variable operating costs in maritime fleet management, and it is driven by a small set of measurable factors: how fast a vessel is moving, how loaded it is, how rough the weather is, and structural characteristics of the vessel itself. Framing this as a **regression problem** (predicting a continuous value — tons of fuel per day) rather than classification allows the output to plug directly into operational decision-making (e.g. voyage planning, bunker cost estimation).
+* Fuel-consumption regression.
+* Regression-model comparison.
+* Feature-importance analysis.
+* Voyage-efficiency clustering.
+* Speed recommendation / optimization.
+* Fuel-cost risk classification.
+* Fleet-wide time-series forecasting.
+* FastAPI model serving.
 
-## 🧮 Feature Engineering
+The module is designed to demonstrate an end-to-end analytical workflow:
 
-| Feature | Source | Rationale |
-|---|---|---|
-| `speed` (knots) | `telemetry_logs.speed_knots` | Primary driver — fuel burn scales super-linearly with speed |
-| `cargo_weight` (tons) | `telemetry_logs.cargo_weight_tons` | Higher displacement increases hull drag |
-| `beaufort_scale` | `telemetry_logs.wind_beaufort` | Weather severity increases resistance and engine load |
-| `dwt` (deadweight tonnage) | `vessels.capacity_dwt` | Structural capacity/size of the vessel |
-| `built_year` | `vessels.year_built` | Proxy for hull efficiency and engine technology generation |
+```text id="8w8e3n"
+Operational Data
+      ↓
+Feature Engineering
+      ↓
+Model Training
+      ↓
+Evaluation
+      ↓
+Error / Limitation Analysis
+      ↓
+Operational Recommendation
+      ↓
+API Serving
+```
 
-Features are pulled directly from the star-schema database via a single joined SQL query (`models/run_training.py`), keeping the training pipeline reproducible from raw telemetry to trained model with no manual data wrangling steps.
+The dataset is **synthetic** and is intentionally structured to provide a reproducible environment for demonstrating the methodology. The reported metrics therefore describe performance on this generated dataset and should not be interpreted as expected accuracy on real-world vessel operations.
 
-## 🌲 Model Selection: Why Random Forest Regressor
+---
 
-* **No feature scaling required** — unlike linear regression or SVR, tree-based models are invariant to feature magnitude, simplifying the pipeline.
-* **Captures non-linear relationships** — fuel consumption scales non-linearly with speed; a Random Forest can model this without manual polynomial feature engineering.
-* **Robust to outliers and noisy sensor readings** — relevant for real-world telemetry data.
-* **Interpretable relative to other ensemble methods** — feature importances are directly extractable, useful for explaining predictions to non-technical stakeholders.
+# 🎯 Problem Framing
 
-**Hyperparameters:** `n_estimators=100`, `random_state=42` (fixed seed for reproducibility). Not extensively tuned — a reasonable baseline given the strength of the underlying signal (see Results below); grid search over `max_depth` and `n_estimators` is a natural next step if applied to noisier, real-world data.
+Fuel consumption is an important variable operating cost in maritime fleet management and is influenced by multiple measurable operational and vessel characteristics.
 
-## 🔬 Model Comparison
+This module frames fuel consumption as a **supervised regression problem**, predicting a continuous quantity:
 
-Three regression algorithms were evaluated on the same train/test split to justify the model choice:
+```text
+Fuel consumption → metric tons / day
+```
 
-| Model | R² | RMSE (tons/day) |
-|---|---|---|
-| Linear Regression | 0.9741 | 0.88 |
-| **Random Forest** | **0.9981** | **0.24** |
-| Gradient Boosting | 0.9982 | 0.23 |
+Regression is appropriate for this formulation because the resulting prediction can be used as an input to downstream analytical tasks such as:
 
-Linear Regression underperforms noticeably, confirming that the speed–fuel relationship is non-linear and better captured by tree-based ensembles. Gradient Boosting edges out Random Forest marginally (ΔR² = 0.0001), but Random Forest was retained for production serving due to faster training time and simpler hyperparameter surface — a reasonable trade-off given the negligible accuracy difference.
+* Fuel-consumption estimation.
+* Voyage comparison.
+* Bunker-cost analysis.
+* Speed optimization.
+* Operational scenario analysis.
 
-## 📈 Training & Evaluation
+The same underlying prediction problem is subsequently reused for classification and optimization experiments.
 
-* **Dataset:** 100,000 telemetry records, joined with vessel metadata
-* **Split:** 80/20 train/test, `random_state=42`
-* **Metrics:**
+---
 
-| Metric | Value |
-|---|---|
-| R² (test set) | 0.9981 |
-| RMSE (test set) | 0.24 tons/day |
+# 🧮 Feature Engineering
 
-The high R² reflects the fact that the underlying simulated telemetry follows a clean physical relationship between speed, weather, and fuel burn — a real-world production deployment would expect more noise (sensor error, unmodeled factors like currents or hull fouling) and correspondingly a lower R². The pipeline itself — feature selection, train/test methodology, and evaluation reporting — is built to the same standard regardless of the noise level of the input data.
+The regression model uses the following features:
 
-## 🔍 Feature Importance
+| Feature                    | Source                             | Rationale                                                            |
+| -------------------------- | ---------------------------------- | -------------------------------------------------------------------- |
+| `speed` (knots)            | `telemetry_logs.speed_knots`       | Fuel consumption generally increases non-linearly with vessel speed  |
+| `cargo_weight` (tons)      | `telemetry_logs.cargo_weight_tons` | Cargo/load affects displacement and therefore resistance             |
+| `beaufort_scale`           | `telemetry_logs.wind_beaufort`     | Higher wind/weather severity can increase resistance and engine load |
+| `dwt` (deadweight tonnage) | `vessels.capacity_dwt`             | Represents vessel carrying capacity and structural scale             |
+| `built_year`               | `vessels.year_built`               | Proxy for vessel age and generation of vessel/engine technology      |
 
-![Feature Importance](feature_importance.png)
+The features are loaded directly from the relational database through a joined SQL query implemented in `models/run_training.py`.
 
-| Feature | Importance |
-|---|---|
-| speed | 0.9504 |
-| beaufort_scale | 0.0483 |
-| cargo_weight | 0.0012 |
-| dwt | 0.0001 |
-| built_year | 0.0001 |
+This keeps the training workflow reproducible:
 
-Speed dominates the model's predictions, consistent with the physical relationship between vessel speed and fuel burn rate (fuel consumption scales super-linearly with speed). Weather severity (Beaufort scale) contributes a secondary but measurable effect, while cargo weight and vessel specifications show minimal influence in this dataset — a useful sanity check that the model has learned the expected physical relationship rather than spurious correlations.
+```text id="g3k6bx"
+PostgreSQL
+    ↓
+SQL join
+    ↓
+Feature dataset
+    ↓
+Train/test split
+    ↓
+Model training
+    ↓
+Evaluation
+```
 
-## 🎯 Voyage Efficiency Clustering (K-Means)
+No manual spreadsheet-based data preparation is required.
 
-Beyond predicting a single fuel consumption value, unsupervised clustering was applied to segment individual voyage records into operational efficiency profiles — useful for fleet-wide benchmarking and identifying which conditions consistently produce inefficient voyages.
+---
 
-* **Algorithm:** K-Means (k=3), features standardized before clustering
-* **Features:** speed, fuel consumption, Beaufort scale, cargo weight
-* **Silhouette Score:** 0.27
+# 🌲 Model Selection: Random Forest Regressor
 
-| Profile | Avg Speed | Avg Fuel (tons/day) | Avg Beaufort | Avg Cargo (tons) | Records |
-|---|---|---|---|---|---|
-| Efficient | 11.52 | 12.28 | 2.41 | 57,388 | 23,068 |
-| Inefficient | 10.33 | 14.14 | 6.63 | 57,297 | 24,228 |
-| Moderate | 12.92 | 16.14 | 4.37 | 57,842 | 27,800 |
+Three regression approaches were evaluated:
 
-**Interpretation:** The silhouette score of 0.27 reflects the fact that fuel consumption is a genuinely continuous function of speed and weather rather than naturally forming distinct clusters — K-Means partitions this continuum into three interpretable segments rather than discovering sharply separated groups, which is expected and reported transparently rather than overstated. The clusters remain operationally meaningful: the "Inefficient" profile is driven primarily by severe weather (Beaufort 6.63 vs 2.41 for "Efficient"), while "Moderate" reflects a speed/fuel trade-off at the highest average speed (12.92 knots) in the fleet.
+* Linear Regression.
+* Random Forest Regression.
+* Gradient Boosting Regression.
 
-![Voyage Clusters](voyage_clusters.png)
+Random Forest was selected as the primary model for serving because it provides:
 
-## ⚙️ Speed Optimization (Recommendation + Optimization)
+### Non-linear modeling
 
-Using the trained fuel model as an evaluation function, this module searches over candidate cruising speeds to recommend the fuel-minimizing speed that still meets a voyage's time constraint — connecting the predictive model directly to an operational decision.
+Tree ensembles can capture non-linear relationships between operational variables without requiring explicit polynomial transformations.
 
-**Example scenario:** 1,000 nm voyage, must arrive within 90 hours, moderate weather (Beaufort 4).
+### No feature scaling requirement
 
-The optimizer evaluates total fuel cost across a speed range and selects the minimum-fuel option that satisfies the time budget:
+Random Forest does not require standardized input features in the same way as many distance- or coefficient-based models.
 
-![Speed Optimization](speed_optimization.png)
+### Feature-importance analysis
 
-**Reproduce:**
-```bash
+The trained ensemble provides a straightforward mechanism for extracting relative feature-importance estimates.
+
+### Practical baseline
+
+Random Forest provides a strong non-linear baseline with relatively little hyperparameter tuning.
+
+The model configuration used for the primary experiment is:
+
+```text id="zq7n9j"
+n_estimators = 100
+random_state = 42
+```
+
+Hyperparameter optimization was not performed exhaustively. The selected configuration should therefore be considered a **baseline model configuration**, not a fully optimized production model.
+
+---
+
+# 🔬 Model Comparison
+
+Three regression algorithms were evaluated using the same train/test split:
+
+| Model             |         R² | RMSE (tons/day) |
+| ----------------- | ---------: | --------------: |
+| Linear Regression |     0.9741 |            0.88 |
+| **Random Forest** | **0.9981** |        **0.24** |
+| Gradient Boosting | **0.9982** |        **0.23** |
+
+The results show that both tree-based ensemble methods substantially outperform Linear Regression on this synthetic dataset.
+
+This is consistent with the non-linear relationship encoded in the generated telemetry.
+
+Gradient Boosting achieves a marginally better result than Random Forest:
+
+```text id="ubf3io"
+ΔR² = 0.0001
+```
+
+Random Forest was retained as the primary model because the accuracy difference is negligible in this experiment while the Random Forest configuration provides a simple, reproducible baseline for model serving.
+
+This should not be interpreted as evidence that Random Forest is universally preferable to Gradient Boosting. A model choice for a real deployment would also consider:
+
+* Validation methodology.
+* Prediction latency.
+* Training cost.
+* Hyperparameter optimization.
+* Model stability.
+* Dataset size.
+* Drift.
+* Interpretability requirements.
+
+---
+
+# 📈 Training & Evaluation
+
+## Dataset
+
+```text id="5ckl4j"
+100,000 synthetic telemetry records
+```
+
+The telemetry records are joined with vessel metadata before model training.
+
+## Train/Test Split
+
+```text id="5fzrjo"
+80% training
+20% testing
+
+random_state = 42
+```
+
+The current regression experiment uses a standard random train/test split.
+
+Because the data is synthetic and does not represent a true temporal operational stream, this is appropriate for the demonstration. A real production telemetry system would require additional consideration of temporal splitting and vessel-level leakage.
+
+---
+
+# 📊 Regression Results
+
+| Metric |       Test Result |
+| ------ | ----------------: |
+| R²     |        **0.9981** |
+| RMSE   | **0.24 tons/day** |
+
+The very high R² should be interpreted carefully.
+
+The synthetic data-generation process creates a relatively clean relationship between the operational variables and fuel consumption. This makes the prediction task substantially easier than a real-world maritime deployment, where additional sources of variability would be expected.
+
+Examples include:
+
+* Sensor noise.
+* Measurement errors.
+* Ocean currents.
+* Hull fouling.
+* Propeller condition.
+* Engine condition.
+* Sea state.
+* Wind direction.
+* Wave characteristics.
+* Route differences.
+* Operational behavior.
+* Loading configuration.
+
+Therefore:
+
+> **R² = 0.9981 demonstrates strong predictive performance on the generated dataset, not 99.81% real-world predictive accuracy.**
+
+The result is useful for validating the end-to-end ML pipeline and model-serving architecture, but it should not be extrapolated directly to production vessel operations.
+
+---
+
+# 🔍 Feature Importance
+
+The trained Random Forest produced the following relative feature-importance values:
+
+| Feature          | Importance |
+| ---------------- | ---------: |
+| `speed`          |     0.9504 |
+| `beaufort_scale` |     0.0483 |
+| `cargo_weight`   |     0.0012 |
+| `dwt`            |     0.0001 |
+| `built_year`     |     0.0001 |
+
+Speed dominates the model's feature-importance distribution, while weather severity contributes a smaller but measurable share.
+
+This is broadly consistent with the structure of the synthetic fuel-consumption relationship.
+
+However, feature importance should **not** be interpreted as causal importance.
+
+In particular:
+
+* A high feature importance does not prove causality.
+* A low feature importance does not prove that a variable is physically irrelevant.
+* Correlated variables can distribute importance in unintuitive ways.
+* Tree-based feature importance can be affected by the structure of the dataset.
+
+The results should therefore be treated as a model diagnostic rather than as a causal analysis of vessel fuel consumption.
+
+---
+
+# 🎯 Voyage Efficiency Clustering — K-Means
+
+Beyond predicting fuel consumption, the module performs unsupervised clustering to identify operational efficiency profiles.
+
+## Method
+
+```text id="z7h5ra"
+Algorithm: K-Means
+Number of clusters: k = 3
+Features standardized before clustering
+```
+
+### Features
+
+* Speed.
+* Fuel consumption.
+* Beaufort scale.
+* Cargo weight.
+
+### Silhouette Score
+
+```text id="1g5w2q"
+0.27
+```
+
+The resulting profiles are:
+
+| Profile     | Avg Speed | Avg Fuel (tons/day) | Avg Beaufort | Avg Cargo (tons) | Records |
+| ----------- | --------: | ------------------: | -----------: | ---------------: | ------: |
+| Efficient   |     11.52 |               12.28 |         2.41 |           57,388 |  23,068 |
+| Inefficient |     10.33 |               14.14 |         6.63 |           57,297 |  24,228 |
+| Moderate    |     12.92 |               16.14 |         4.37 |           57,842 |  27,800 |
+
+---
+
+## Interpretation
+
+A silhouette score of `0.27` indicates **moderate/weak cluster separation**, rather than three sharply distinct natural populations.
+
+This is expected given that fuel consumption is modeled as a continuous function of variables such as speed and weather.
+
+K-Means therefore acts primarily as an **operational segmentation technique**, partitioning a continuous space into interpretable profiles.
+
+The profiles provide useful descriptive distinctions:
+
+* **Efficient:** lower average speed, lower weather severity, lower fuel consumption.
+* **Inefficient:** relatively severe weather conditions despite lower average speed.
+* **Moderate:** highest average speed and corresponding higher fuel consumption.
+
+The analysis should not be interpreted as proving that these three categories represent naturally occurring vessel classes.
+
+---
+
+# ⚙️ Speed Optimization & Recommendation
+
+The trained regression model is also used as an evaluation function inside a simple optimization procedure.
+
+The optimizer searches over candidate cruising speeds and selects the speed that minimizes predicted fuel consumption while satisfying a voyage-time constraint.
+
+Conceptually:
+
+```text id="sn0jmx"
+Minimize:
+    predicted_fuel_consumption(speed)
+
+Subject to:
+    voyage_distance / speed <= maximum_allowed_time
+```
+
+## Example Scenario
+
+```text id="r6n0n6"
+Voyage distance:       1,000 nautical miles
+Maximum travel time:   90 hours
+Weather:               Beaufort 4
+```
+
+The optimizer evaluates candidate speeds and identifies the lowest predicted fuel-consumption solution that satisfies the time constraint.
+
+Run:
+
+```bash id="b5b2d8"
 python models/speed_optimizer.py
 ```
 
-### ⚠️ Known limitation: model extrapolation beyond the training range
+---
 
-The recommender flagged an important limitation during testing: for speeds above ~14 knots, the model's predicted fuel rate plateaus at a constant value instead of continuing to rise. This is because the training data (`database/generate_data.py`) only contains speeds up to ~15 knots after weather adjustment — Random Forest, being a tree-based model, cannot extrapolate beyond the range of values it was trained on; it returns the nearest leaf node's value instead. As a result, the optimizer's "fastest is best" recommendation at the top of the search range is an artifact of this extrapolation limit, not a genuine physical result.
+# ⚠️ Optimization Limitation: Model Extrapolation
 
-**Takeaway:** any production deployment of this optimizer would need either (a) a wider training speed range covering the full realistic operating envelope, or (b) an explicit guardrail restricting recommendations to the interpolation range the model was actually trained on. This is flagged here deliberately as an example of validating a model's outputs against its training data coverage, rather than trusting optimizer output blindly.
+The optimizer exposed an important limitation during testing.
 
-## 🏷️ Fuel Cost Risk Classification
+For speeds approaching or exceeding the upper end of the training distribution, the Random Forest prediction can plateau instead of continuing to increase.
 
-The same prediction problem is reframed here as a **3-class classification task** (Low / Medium / High fuel-cost voyage) instead of predicting an exact tons/day value — useful for dashboards or alerting where a category is more actionable than a precise number.
+This is a fundamental property of tree-based models:
 
-* **Algorithm:** Random Forest Classifier
-* **Labels:** Tercile-based buckets of `fuel_consumption` (Low ≤ 11.72, Medium ≤ 14.58, High > 14.58 tons/day)
-* **Features:** same as the regression model (speed, cargo weight, Beaufort scale, DWT, built year)
+> Random Forests generally interpolate within the regions represented by their training data but do not extrapolate smoothly beyond the observed feature range.
 
-**Results:**
+The training data generated by `database/generate_data.py` contains a limited operating-speed range.
 
-| Class | Precision | Recall | F1-score |
-|---|---|---|---|
-| Low | 1.00 | 1.00 | 1.00 |
-| Medium | 1.00 | 1.00 | 1.00 |
-| High | 1.00 | 1.00 | 1.00 |
-| **Accuracy** | | | **1.00** |
+As a result, an optimizer searching too far toward the boundary can produce recommendations that reflect **model behavior rather than physical reality**.
 
-![Confusion Matrix](confusion_matrix.png)
+This is particularly important because optimization amplifies model errors:
 
-### ⚠️ Interpreting the perfect score honestly
+```text id="0esxkz"
+Prediction error
+      ↓
+Optimization search
+      ↓
+Potentially misleading recommendation
+```
 
-A perfect classification score across every metric is a signal that deserves scrutiny rather than celebration. Here, the explanation is straightforward: the Low/Medium/High labels were derived directly from `fuel_consumption` itself (via quantile thresholds), and the classifier uses the same features that already predict `fuel_consumption` with R² = 0.998 in the regression model above. Discretizing an already near-deterministic relationship into three bins will naturally classify near-perfectly — this is an expected consequence of the label construction, not evidence of exceptional model skill or a leak-free generalization guarantee on genuinely noisy, real-world data.
+The recommendation should therefore be constrained to the model's validated operating domain.
 
-**Takeaway:** in a production setting with real (noisier) sensor data and labels defined independently of the input features (e.g. actual cost thresholds set by finance, not derived from the same telemetry), this classifier would be expected to perform meaningfully below 100% — that gap would be the real measure of the model's practical value.
+### Recommended production safeguards
 
-**Reproduce:**
-```bash
+A real implementation should use one or more of:
+
+1. Explicit feature-range validation.
+2. Optimization bounds derived from validated training data.
+3. A wider and representative training dataset.
+4. Physical constraints.
+5. Independent validation of recommended operating points.
+6. Human/operator approval for high-impact decisions.
+
+This limitation is deliberately documented because a model that performs well on prediction does not automatically produce reliable optimization recommendations.
+
+---
+
+# 🏷️ Fuel-Cost Risk Classification
+
+The regression problem is also reframed as a three-class classification problem:
+
+```text id="y8z3y7"
+Low
+Medium
+High
+```
+
+The goal is to demonstrate a classification workflow suitable for dashboards or alerting systems where a category may be easier to consume than a continuous fuel estimate.
+
+## Model
+
+```text id="1v2t6p"
+Random Forest Classifier
+```
+
+## Labels
+
+The labels are created using terciles of `fuel_consumption`:
+
+```text id="r6t6tg"
+Low    ≤ 11.72 tons/day
+Medium ≤ 14.58 tons/day
+High   > 14.58 tons/day
+```
+
+## Features
+
+The classifier uses the same input features as the regression model:
+
+* Speed.
+* Cargo weight.
+* Beaufort scale.
+* DWT.
+* Built year.
+
+---
+
+# 📊 Classification Results
+
+| Class        | Precision | Recall | F1-score |
+| ------------ | --------: | -----: | -------: |
+| Low          |      1.00 |   1.00 |     1.00 |
+| Medium       |      1.00 |   1.00 |     1.00 |
+| High         |      1.00 |   1.00 |     1.00 |
+| **Accuracy** |           |        | **1.00** |
+
+---
+
+# ⚠️ Interpreting the Perfect Classification Score
+
+The perfect score should **not** be interpreted as evidence of exceptional classification performance.
+
+The reason is structural.
+
+The class labels are derived directly from the target variable:
+
+```text id="0x7h1n"
+fuel_consumption
+       ↓
+quantile thresholds
+       ↓
+Low / Medium / High
+```
+
+The classifier then receives features that already predict `fuel_consumption` with extremely high accuracy:
+
+```text id="gy8r3q"
+Operational Features
+       ↓
+Random Forest
+       ↓
+Approximate fuel consumption
+       ↓
+Tercile category
+```
+
+Consequently, discretizing a nearly deterministic target relationship produces a classification problem that is inherently easy.
+
+This is an important limitation of the experiment.
+
+The result demonstrates that the pipeline can perform classification successfully, but it does **not** establish that the classifier would achieve 100% accuracy on an independently defined real-world risk label.
+
+---
+
+# 💡 Better Production Formulation
+
+A more realistic production classification task would define the target independently of the same telemetry features.
+
+For example:
+
+```text id="7kqjbf"
+Actual bunker cost
+       +
+Financial threshold
+       ↓
+Low / Medium / High cost risk
+```
+
+or:
+
+```text id="s5c2bq"
+Actual voyage cost
+       +
+Budget threshold
+       ↓
+Cost-risk category
+```
+
+Such labels would provide a more meaningful test of generalization.
+
+The current experiment is therefore best understood as a **pipeline demonstration and methodological exercise**, not as evidence of a production-ready risk classifier.
+
+Reproduce:
+
+```bash id="t0h1wb"
 python models/classify_fuel_risk.py
 ```
 
-## 📉 Fleet-Wide Fuel Consumption Forecasting
+---
 
-Time-series forecasting was applied to fleet-wide daily fuel consumption using Holt-Winters Exponential Smoothing with weekly seasonality, evaluated with a proper **time-ordered** train/test split (the last 14 days held out — never randomly shuffled, which would leak future information into training for time-series data).
+# 📉 Fleet-Wide Fuel Consumption Forecasting
 
-* **Method:** Holt-Winters Exponential Smoothing (additive trend + weekly seasonality)
-* **Data:** 901 days of fleet-wide daily fuel totals
-* **Evaluation:** last 14 days held out, compared against a naive baseline (predict "same as yesterday")
+The module also evaluates fleet-wide time-series forecasting.
 
-**Results:**
+Daily fleet fuel consumption is modeled using:
 
-| Method | MAE (tons/day) |
-|---|---|
-| Holt-Winters forecast | 104.43 |
-| Naive baseline (yesterday's value) | **98.15** |
-
-![Fuel Forecast](fuel_forecast.png)
-
-### ⚠️ Honest finding: the forecast underperforms the naive baseline
-
-Unlike the regression, clustering, and classification results above, this forecast **does not outperform a trivial baseline**. The root cause traces back to the synthetic data generation process (`database/generate_data.py`): telemetry dates were sampled randomly across a 60-day window rather than generated sequentially, so the daily aggregate series contains no genuine weekly seasonal pattern for Holt-Winters to learn — the model's seasonal component is effectively fitting noise, which actively hurts accuracy relative to simply repeating the last observed value.
-
-**Takeaway:** this is reported transparently rather than hidden or reframed as a success, because comparing against a naive baseline — and being willing to report when a more sophisticated method loses to it — is itself the correct methodology. It also identifies a concrete, fixable data generation issue: a production-quality version of this pipeline would need dates generated sequentially (one row per vessel per day) rather than randomly sampled, to give any time-series method a genuine seasonal or trend signal to model.
-
-**Reproduce:**
-```bash
-python models/forecast_fuel_trend.py
+```text id="2v0jks"
+Holt-Winters Exponential Smoothing
+Additive trend
+Weekly seasonality
 ```
 
-## 🔌 Serving the Model
+## Dataset
 
-The trained model (`fuel_model.pkl`) is loaded once at FastAPI startup (`main.py`) and served through:
-
+```text id="2ctd3q"
+901 daily observations
 ```
+
+## Evaluation
+
+The last 14 days are held out as the test period.
+
+Importantly, the data is split **chronologically rather than randomly**:
+
+```text id="m8e0k2"
+Historical observations
+───────────────────────────────┬──────────
+                               │
+                            14-day test
+                               │
+                               ▼
+                         Future observations
+```
+
+This prevents future observations from being mixed into the training set.
+
+The model is compared against a naive baseline:
+
+> Predict today's value as yesterday's observed value.
+
+---
+
+# 📊 Forecasting Results
+
+| Method                | MAE (tons/day) |
+| --------------------- | -------------: |
+| Holt-Winters forecast |         104.43 |
+| **Naive baseline**    |      **98.15** |
+
+The naive baseline performs better.
+
+This is an important negative result and is retained deliberately.
+
+---
+
+# ⚠️ Why the Forecast Underperforms
+
+The synthetic data-generation process provides an important explanation.
+
+Telemetry dates are sampled randomly across a 60-day window rather than generated as a genuinely sequential time series with structured daily observations.
+
+Consequently, the aggregated fleet-level series does not contain a reliable weekly seasonal pattern for Holt-Winters to learn.
+
+The forecasting model can therefore fit a seasonal component that does not correspond to a genuine underlying signal.
+
+The resulting model performs worse than simply using the previous day's value.
+
+This demonstrates an important principle:
+
+> **A sophisticated forecasting model cannot compensate for a dataset that does not contain the temporal structure the model assumes.**
+
+---
+
+# 🔧 Improving the Forecasting Experiment
+
+A more realistic synthetic time-series generator would produce sequential observations such as:
+
+```text id="n0w9h6"
+Vessel A — Day 1
+Vessel A — Day 2
+Vessel A — Day 3
+...
+Vessel B — Day 1
+Vessel B — Day 2
+...
+```
+
+and explicitly model:
+
+* Weekly seasonality.
+* Long-term trend.
+* Weather variation.
+* Vessel-specific effects.
+* Operational cycles.
+
+The forecasting model could then be evaluated against stronger baselines and alternative methods.
+
+Potential future models include:
+
+* Seasonal Naive.
+* Exponential Smoothing variants.
+* ARIMA / SARIMA.
+* Gradient-boosted time-series models.
+* Temporal cross-validation.
+
+---
+
+# 🔌 Model Serving
+
+The trained regression model is serialized as:
+
+```text id="o6u8t7"
+fuel_model.pkl
+```
+
+and loaded by the FastAPI application.
+
+The model is exposed through:
+
+```http
 POST /predict-fuel-consumption
 ```
 
-**Request body:**
-```json
+## Request
+
+```json id="y8h1w4"
 {
   "speed": 12.5,
   "cargo_weight": 60000,
@@ -182,8 +637,9 @@ POST /predict-fuel-consumption
 }
 ```
 
-**Response:**
-```json
+## Response
+
+```json id="9ydv2u"
 {
   "predicted_fuel_consumption_tons_per_day": 15.13,
   "unit": "Metric Tons / Day",
@@ -191,51 +647,219 @@ POST /predict-fuel-consumption
 }
 ```
 
-## 📁 Files in This Module
+This demonstrates model integration into a REST API and provides an on-demand prediction interface.
 
-| File | Purpose |
-|---|---|
-| `run_training.py` | Entry point: loads data from PostgreSQL, calls `train_fuel_model` |
-| `train_model.py` | Defines feature/target selection, train/test split, model fitting, and evaluation |
-| `compare_models.py` | Compares Linear Regression, Random Forest, and Gradient Boosting on the same data/split |
-| `feature_importance.py` | Extracts and plots feature importances from the trained model |
-| `cluster_voyages.py` | K-Means clustering of voyages into efficiency profiles |
-| `speed_optimizer.py` | Recommends fuel-minimizing cruising speed given a voyage distance and time budget |
-| `classify_fuel_risk.py` | Random Forest classifier: Low/Medium/High fuel-cost category |
-| `forecast_fuel_trend.py` | Holt-Winters time-series forecast of fleet-wide daily fuel consumption |
-| `fuel_predictor.py` | Lightweight `FuelPredictor` class for loading the model and serving predictions outside of FastAPI (e.g. for testing or batch scoring) |
-| `fuel_model.pkl` | Serialized trained regression model (joblib) |
-| `voyage_clusters.pkl` / `voyage_scaler.pkl` | Serialized cluster model and feature scaler |
-| `fuel_risk_classifier.pkl` | Serialized trained classifier |
-| `feature_importance.png` | Generated feature importance chart |
-| `voyage_clusters.png` | Generated cluster visualization |
-| `speed_optimization.png` | Generated speed vs. fuel/time trade-off chart |
-| `confusion_matrix.png` | Generated confusion matrix chart |
-| `fuel_forecast.png` | Generated forecast vs. actual chart |
+The endpoint should not be interpreted as a complete production MLOps deployment. Production deployment would require additional controls such as:
 
-## 🚀 Reproducing the Results
+* Model versioning.
+* Input distribution monitoring.
+* Model drift detection.
+* Authentication and authorization.
+* Rate limiting.
+* Health checks.
+* Automated model validation.
+* CI/CD.
+* Observability.
+* Model rollback mechanisms.
 
-```bash
-# From the project root, with the PostgreSQL container running and seeded:
+---
+
+# 📁 Files in This Module
+
+| File                                        | Purpose                                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `run_training.py`                           | Entry point: loads data from PostgreSQL and calls the training pipeline               |
+| `train_model.py`                            | Defines features, target, train/test split, model fitting, and evaluation             |
+| `compare_models.py`                         | Compares Linear Regression, Random Forest, and Gradient Boosting on the same split    |
+| `feature_importance.py`                     | Extracts and visualizes feature-importance estimates                                  |
+| `cluster_voyages.py`                        | Performs K-Means clustering of operational records                                    |
+| `speed_optimizer.py`                        | Searches for a fuel-minimizing cruising speed under a voyage-time constraint          |
+| `classify_fuel_risk.py`                     | Trains the Low/Medium/High fuel-cost classifier                                       |
+| `forecast_fuel_trend.py`                    | Performs fleet-wide Holt-Winters forecasting                                          |
+| `fuel_predictor.py`                         | Lightweight `FuelPredictor` class for loading and serving predictions outside FastAPI |
+| `fuel_model.pkl`                            | Serialized trained regression model                                                   |
+| `voyage_clusters.pkl` / `voyage_scaler.pkl` | Serialized clustering model and feature scaler                                        |
+| `fuel_risk_classifier.pkl`                  | Serialized trained classification model                                               |
+| `feature_importance.png`                    | Generated feature-importance visualization                                            |
+| `voyage_clusters.png`                       | Generated clustering visualization                                                    |
+| `speed_optimization.png`                    | Generated speed-optimization visualization                                            |
+| `confusion_matrix.png`                      | Generated classification confusion matrix                                             |
+| `fuel_forecast.png`                         | Generated forecast-vs-actual visualization                                            |
+
+---
+
+# 🚀 Reproducing the Results
+
+From the project root, with the PostgreSQL container running and the database populated:
+
+## Train the regression model
+
+```bash id="ik75aj"
 python models/run_training.py
+```
 
-# Optional: compare against other algorithms
+## Compare regression models
+
+```bash id="q6jskm"
 python models/compare_models.py
+```
 
-# Optional: regenerate the feature importance chart
+## Generate feature-importance analysis
+
+```bash id="av1poc"
 python models/feature_importance.py
+```
 
-# Optional: run voyage efficiency clustering
+## Run voyage clustering
+
+```bash id="y4v0f7"
 python models/cluster_voyages.py
+```
 
-# Optional: run speed optimization recommender
+## Run speed optimization
+
+```bash id="h3o7ex"
 python models/speed_optimizer.py
+```
 
-# Optional: run fuel-cost risk classification
+## Run fuel-cost classification
+
+```bash id="w9m2kf"
 python models/classify_fuel_risk.py
+```
 
-# Optional: run fleet-wide fuel consumption forecasting
+## Run fleet-wide forecasting
+
+```bash id="6n1zri"
 python models/forecast_fuel_trend.py
 ```
 
-This will print the R² and RMSE on the held-out test set and overwrite `fuel_model.pkl` with a freshly trained model.
+The training script reports the regression performance on the held-out test set and writes the trained model to:
+
+```text id="9k5j0r"
+models/fuel_model.pkl
+```
+
+---
+
+# ⚠️ Overall Scientific Limitations
+
+The experiments in this module are intended primarily as **reproducible demonstrations of analytical methodology and software integration**.
+
+The most important limitations are:
+
+### 1. Synthetic Data
+
+The maritime telemetry is generated programmatically rather than collected from a real fleet.
+
+### 2. Simplified Relationships
+
+The data generator contains relatively clean relationships between variables such as speed, weather, and fuel consumption.
+
+### 3. Limited External Validity
+
+Model metrics obtained from synthetic data cannot be assumed to transfer to real-world vessel operations.
+
+### 4. Random Train/Test Split
+
+The regression experiment uses a random split because the generated dataset is not a genuine temporal telemetry stream.
+
+Real deployment would require careful consideration of:
+
+* Temporal validation.
+* Vessel-level leakage.
+* Cross-vessel generalization.
+* Out-of-distribution conditions.
+
+### 5. Optimization Depends on Prediction Quality
+
+The speed optimizer inherits the assumptions and limitations of the regression model.
+
+### 6. Classification Target Construction
+
+The risk labels are derived from the same target variable the regression model predicts, making the classification task substantially easier than an independently defined operational risk problem.
+
+### 7. Forecasting Data Generation
+
+The current synthetic time series lacks the temporal structure required to demonstrate a realistic seasonal forecasting problem.
+
+### 8. No Extensive Hyperparameter Optimization
+
+The primary models use reasonable baseline configurations rather than exhaustive hyperparameter search.
+
+---
+
+# 🔬 Scientific Interpretation
+
+The experiments should therefore be interpreted at three different levels.
+
+## What the experiments demonstrate
+
+They demonstrate that the project can:
+
+* Build reproducible ML pipelines.
+* Extract structured features from PostgreSQL.
+* Train and compare multiple model families.
+* Evaluate models quantitatively.
+* Perform unsupervised segmentation.
+* Connect prediction to optimization.
+* Expose models through FastAPI.
+* Identify model limitations.
+* Compare complex models against simple baselines.
+
+## What the experiments do not demonstrate
+
+They do not establish:
+
+* Production-level maritime prediction accuracy.
+* Generalization to unseen real vessels.
+* Causal relationships between individual features and fuel consumption.
+* Production-ready optimization recommendations.
+* Real-world translation of the 100% classification accuracy.
+* Superiority of Holt-Winters over other forecasting approaches.
+
+This distinction is intentional.
+
+A strong applied ML workflow should report not only where a model performs well, but also **where the data, evaluation design, or model assumptions limit the conclusions that can be drawn**.
+
+---
+
+# 🎯 Summary
+
+The module demonstrates a complete progression from prediction to decision support:
+
+```text id="xw8s2q"
+                    Synthetic Fleet Telemetry
+                              │
+                              ▼
+                     Feature Engineering
+                              │
+             ┌────────────────┼────────────────┐
+             │                │                │
+             ▼                ▼                ▼
+        Regression        Clustering       Classification
+             │                │                │
+             ▼                ▼                ▼
+      Fuel Prediction   Efficiency       Risk Categories
+             │             Profiles             │
+             │                                   │
+             └───────────────┬───────────────────┘
+                             │
+                             ▼
+                      Speed Optimization
+                             │
+                             ▼
+                      Decision Support
+                             │
+                             ▼
+                         FastAPI
+                             │
+                             ▼
+                       Model Serving
+```
+
+A separate forecasting workflow evaluates fleet-wide temporal behavior and demonstrates why baseline comparison and data-generation quality are critical to time-series modeling.
+
+The overall emphasis is not on maximizing headline metrics, but on demonstrating a complete analytical process:
+
+> **Build → Evaluate → Challenge → Interpret → Document limitations → Serve responsibly**
